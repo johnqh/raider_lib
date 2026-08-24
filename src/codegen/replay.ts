@@ -4,11 +4,32 @@ export function templateToHonoPath(template: string): string {
   return template.replace(/\{([^}]+)\}/g, ':$1');
 }
 
+/**
+ * The first path segment shared by observed endpoints, e.g. `/api`. Requests
+ * under it that were never captured must fail loudly rather than fall through
+ * to the SPA fallback, which would answer 200 with the app shell.
+ */
+function apiPrefixes(model: ApiModel): string[] {
+  const prefixes = new Set<string>();
+  for (const endpoint of model.endpoints) {
+    const first = endpoint.template.split('/').filter(Boolean)[0];
+    if (first && !first.startsWith('{')) prefixes.add(`/${first}`);
+  }
+  return Array.from(prefixes).sort();
+}
+
 export function generateReplayServer(model: ApiModel): string {
   const routes = model.endpoints
     .map(
       (endpoint) =>
         `app.${endpoint.method.toLowerCase()}('${templateToHonoPath(endpoint.template)}', (c) => respond(c, '${endpoint.key}'));`
+    )
+    .join('\n');
+
+  const gapGuards = apiPrefixes(model)
+    .map(
+      (prefix) =>
+        `app.all('${prefix}/*', (c) =>\n  c.json(\n    { error: 'XRAY-GAP', detail: \`no endpoint captured for \${c.req.method} \${c.req.path}\` },\n    501\n  )\n);`
     )
     .join('\n');
 
@@ -37,6 +58,10 @@ function respond(c: Context, key: string) {
 }
 
 ${routes}
+
+// Anything else under an observed API prefix was never captured. Answering it
+// with the SPA shell would look like success; 501 says what is actually true.
+${gapGuards}
 
 // Static assets, then SPA fallback so client-side routes resolve on reload.
 app.use('/*', serveStatic({ root: './dist' }));

@@ -42,3 +42,32 @@ test('returns 501 with an explicit marker when no recording exists', () => {
 test('serves the built app with SPA fallback so deep links resolve', () => {
   expect(generateReplayServer(MODEL)).toContain('index.html');
 });
+
+test('uncaptured paths under an observed API prefix return 501, not the SPA shell', () => {
+  const out = generateReplayServer(MODEL);
+  // The guard must be registered before the static fallback, or the SPA
+  // catch-all answers 200 with index.html and the gap disappears.
+  const guardAt = out.indexOf("app.all('/api/*'");
+  const fallbackAt = out.indexOf("app.get('*'");
+  expect(guardAt).toBeGreaterThan(-1);
+  expect(fallbackAt).toBeGreaterThan(-1);
+  expect(guardAt).toBeLessThan(fallbackAt);
+});
+
+test('derives the API prefix from the observed endpoints', () => {
+  const out = generateReplayServer({
+    baseUrl: null,
+    endpoints: [
+      {
+        key: 'GET /v2/things',
+        method: 'GET',
+        template: '/v2/things',
+        calls: 1,
+        auth: 'none',
+        requestSchema: null,
+        responses: [{ status: 200, count: 1, schema: { type: 'unknown' } }],
+      },
+    ],
+  });
+  expect(out).toContain("app.all('/v2/*'");
+});
