@@ -54,3 +54,11 @@ export {
   bundleFilename,
 } from './bundle/assemble';
 export type { BundleInput, RuntimeArtifacts } from './bundle/assemble';
+
+export {
+  parseSourceMap,
+  recoverSources,
+  recoveryRatio,
+  normalizeSourcePath,
+} from './analysis/sourceMap';
+export type { SourceMap, RecoveredFile } from './analysis/sourceMap';
