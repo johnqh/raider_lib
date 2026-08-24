@@ -69,3 +69,27 @@ test('static asset requests are not treated as endpoints', () => {
   });
   expect(model.routes[0]!.endpoints).toEqual(['GET /api/me']);
 });
+
+test('HTML document navigations are not endpoints, even without a file extension', () => {
+  const model = buildRouteModel({
+    routes: ['/users'],
+    navigations: [{ navigationId: 'nav1', path: '/users' }],
+    requests: [
+      { method: 'GET', url: 'https://x.com/users', navigationId: 'nav1', resourceType: 'Document' },
+      { method: 'GET', url: 'https://x.com/api/users', navigationId: 'nav1', resourceType: 'XHR' },
+    ],
+  });
+  expect(model.routes[0]!.endpoints).toEqual(['GET /api/users']);
+});
+
+test('CORS preflights are transport, not API surface', () => {
+  const model = buildRouteModel({
+    routes: ['/'],
+    navigations: [{ navigationId: 'nav1', path: '/' }],
+    requests: [
+      { method: 'OPTIONS', url: 'https://x.com/api/me', navigationId: 'nav1', resourceType: 'Preflight' },
+      { method: 'GET', url: 'https://x.com/api/me', navigationId: 'nav1', resourceType: 'XHR' },
+    ],
+  });
+  expect(model.routes[0]!.endpoints).toEqual(['GET /api/me']);
+});

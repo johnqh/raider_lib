@@ -3,7 +3,13 @@ import { endpointKey } from '../coverage/pathTemplate';
 export interface RouteModelInput {
   routes: string[];
   navigations: Array<{ navigationId: string; path: string }>;
-  requests: Array<{ method: string; url: string; navigationId: string | null }>;
+  requests: Array<{
+    method: string;
+    url: string;
+    navigationId: string | null;
+    /** CDP resource type. When absent, falls back to a URL heuristic. */
+    resourceType?: string;
+  }>;
 }
 
 export interface RouteModel {
@@ -31,11 +37,22 @@ function matches(pattern: string, path: string): boolean {
   return patternParts.every((part, i) => part.startsWith(':') || part === pathParts[i]);
 }
 
-function isApiCall(url: string): boolean {
+const API_RESOURCE_TYPES = new Set(['XHR', 'Fetch']);
+
+function isApiCall(request: {
+  url: string;
+  method: string;
+  resourceType?: string;
+}): boolean {
+  // Preflights are transport, not API surface.
+  if (request.method === 'OPTIONS') return false;
+  // Prefer the resource type the browser reported: an SPA route has no file
+  // extension, so a URL heuristic mistakes HTML navigations for API calls.
+  if (request.resourceType) return API_RESOURCE_TYPES.has(request.resourceType);
   try {
-    return !ASSET_RE.test(new URL(url).pathname);
+    return !ASSET_RE.test(new URL(request.url).pathname);
   } catch {
-    return !ASSET_RE.test(url);
+    return !ASSET_RE.test(request.url);
   }
 }
 
@@ -44,7 +61,7 @@ export function buildRouteModel(input: RouteModelInput): RouteModel {
   const unattributed: string[] = [];
 
   for (const request of input.requests) {
-    if (!isApiCall(request.url)) continue;
+    if (!isApiCall(request)) continue;
     const key = endpointKey(request.method, request.url);
     if (request.navigationId === null) {
       if (!unattributed.includes(key)) unattributed.push(key);
