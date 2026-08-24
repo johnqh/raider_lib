@@ -1,1 +1,14 @@
 export const XRAY_FORMAT_VERSION = 1 as const;
+
+export type {
+  CapturedRequest,
+  CapturedFrame,
+  Gap,
+  GapReason,
+  RedactionEntry,
+  RedactionKind,
+  StackFingerprint,
+  XrayManifest,
+} from './bundle/types';
+
+export { contentPath, sourcemapPath, extensionForMime } from './bundle/paths';
