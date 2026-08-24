@@ -70,3 +70,7 @@ export { buildApiModel } from './analysis/apiModel';
 export type { ApiModel, EndpointModel, EndpointSample } from './analysis/apiModel';
 export { buildRouteModel } from './analysis/routeModel';
 export type { RouteModel, RouteModelInput } from './analysis/routeModel';
+
+export { schemaToType, declareType, typeNameFor } from './codegen/types';
+export { generateTypes, generateClient, methodNameFor } from './codegen/client';
+export { generateReplayServer, templateToHonoPath } from './codegen/replay';
