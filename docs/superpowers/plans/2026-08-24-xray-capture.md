@@ -625,7 +625,7 @@ git commit -m "feat: manifest construction, JSONL helpers, minimal fixture bundl
 - Test: `~/projects/xray_extension/tests/messages.test.ts`
 
 **Interfaces:**
-- Consumes: `@sudobility/xray_lib` types via a local file link
+- Consumes: `@sudobility/xray_lib` types via a `file:` dependency (Bun's `link:` means a globally `bun link`-ed package, not a path)
 - Produces:
   - `type XrayMessage` — discriminated union on `kind`
   - `isXrayMessage(value: unknown): value is XrayMessage`
@@ -672,7 +672,7 @@ Expected: FAIL — cannot resolve `../src/shared/messages`
     "test": "bun test"
   },
   "dependencies": {
-    "@sudobility/xray_lib": "link:../xray_lib",
+    "@sudobility/xray_lib": "file:../xray_lib",
     "fflate": "^0.8.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
