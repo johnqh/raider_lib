@@ -65,3 +65,8 @@ export type { SourceMap, RecoveredFile } from './analysis/sourceMap';
 
 export { inferSchema, unifySchemas } from './analysis/schema';
 export type { JsonSchema } from './analysis/schema';
+
+export { buildApiModel } from './analysis/apiModel';
+export type { ApiModel, EndpointModel, EndpointSample } from './analysis/apiModel';
+export { buildRouteModel } from './analysis/routeModel';
+export type { RouteModel, RouteModelInput } from './analysis/routeModel';
