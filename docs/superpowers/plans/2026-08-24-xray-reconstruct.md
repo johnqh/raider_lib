@@ -1193,8 +1193,10 @@ const { runReconstruct } = await import('./commands/reconstruct');
 await runReconstruct(process.argv.slice(3));
 ```
 
-Task 32 fills in `commands/reconstruct.ts`; until then the import fails loudly,
-which is correct — there is nothing to run yet.
+**Correction:** do not create `cli.ts` in this task. Its dynamic import of
+`./commands/reconstruct` does not typecheck until Task 32 creates that module,
+which would break the verification gate on every task in between. Create
+`cli.ts` in Task 32 alongside the command it dispatches to.
 
 - [ ] **Step 5: Verify and commit**
 
