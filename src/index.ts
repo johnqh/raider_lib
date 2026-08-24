@@ -20,3 +20,6 @@ export {
   parseJsonl,
 } from './bundle/manifest';
 export type { CreateManifestInput, ValidateResult } from './bundle/manifest';
+
+export { createPseudonymizer } from './redaction/pseudonym';
+export type { Pseudonymizer } from './redaction/pseudonym';
