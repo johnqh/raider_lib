@@ -34,3 +34,5 @@ export {
 } from './redaction/json';
 export { redactRequest } from './redaction/index';
 export type { RedactableRequest, RedactedRequest } from './redaction/index';
+
+export { toPathTemplate, endpointKey } from './coverage/pathTemplate';
