@@ -74,3 +74,6 @@ export type { RouteModel, RouteModelInput } from './analysis/routeModel';
 export { schemaToType, declareType, typeNameFor } from './codegen/types';
 export { generateTypes, generateClient, methodNameFor } from './codegen/client';
 export { generateReplayServer, templateToHonoPath } from './codegen/replay';
+
+export { generateProject, pageNameFor } from './codegen/project';
+export type { ProjectInput } from './codegen/project';
