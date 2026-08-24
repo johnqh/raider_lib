@@ -23,3 +23,6 @@ export type { CreateManifestInput, ValidateResult } from './bundle/manifest';
 
 export { createPseudonymizer } from './redaction/pseudonym';
 export type { Pseudonymizer } from './redaction/pseudonym';
+
+export { isSensitiveKey, classifyValue } from './redaction/patterns';
+export { redactHeaders } from './redaction/headers';
