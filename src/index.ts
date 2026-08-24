@@ -36,3 +36,12 @@ export { redactRequest } from './redaction/index';
 export type { RedactableRequest, RedactedRequest } from './redaction/index';
 
 export { toPathTemplate, endpointKey } from './coverage/pathTemplate';
+
+export { computeCoverage } from './coverage/coverage';
+export type {
+  ChunkManifest,
+  RouteRecord,
+  CoverageInput,
+  CoverageReport,
+  EndpointCoverage,
+} from './coverage/coverage';
