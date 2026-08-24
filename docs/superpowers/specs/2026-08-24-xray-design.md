@@ -41,15 +41,40 @@ the operator's responsibility.
 
 | Repo | Package | Role |
 |---|---|---|
+| `xray_lib` | `@sudobility/xray_lib`, BUSL-1.1 | Bundle format types and pure analysis: redaction, coverage, schema inference |
 | `xray_extension` | private | MV3 extension: capture, introspection, coverage UI, redaction, export |
-| `xray_lib` | `@sudobility/xray_lib`, BUSL-1.1 | Bundle format types, offline analysis, codegen, the `reconstruct` skill |
+| `xray_cli` | `@sudobility/xray_cli`, BUSL-1.1 | Reconstruction CLI and the Claude Code `reconstruct` skill |
+
+The dependency shape is a diamond, not a chain:
+
+```
+xray_lib              pure: bundle format, redaction, coverage, inference
+   ├── xray_extension   browser: CDP capture, offscreen buffer, side panel
+   └── xray_cli         node: unzip, filesystem, codegen + the reconstruct skill
+```
+
+`xray_lib` performs **no I/O** — no filesystem, and no `DOM` in its tsconfig
+`lib`. That constraint is mechanically enforced rather than merely intended,
+and it is what lets the package be imported into a Chrome MV3 bundle and tested
+in milliseconds with no environment.
+
+A CLI is the opposite: it needs `fs`, `path`, `process`, and zip extraction.
+Placing it in `xray_lib` would put Node-only code in the dependency graph of a
+browser artifact and end that enforcement the moment one file reads from disk.
+Hence the third repository. The two consumers never depend on each other.
 
 Stack follows the existing extension family (`testomniac_extension`): Vite,
-`@crxjs/vite-plugin`, React, TypeScript, Bun, Tailwind. `xray_lib` is pure
-Bun/TypeScript with no browser APIs, so it runs and tests headlessly.
+`@crxjs/vite-plugin`, React, TypeScript, Bun, Tailwind. `xray_cli` is a Bun
+binary.
 
-The bundle format types live in `xray_lib` and are imported by the extension.
-The format cannot drift between producer and consumer.
+The bundle format types live in `xray_lib` alone and are imported by both
+consumers. The format cannot drift between producer and consumer, and
+`formatVersion` makes a mismatch fail loudly at `validateManifest` rather than
+producing a subtly wrong reconstruction.
+
+**Cost of this split, stated plainly:** a change to the bundle format moves
+three repositories in lockstep. That is accepted in exchange for keeping Node
+out of a package that ships to the browser.
 
 ### Runtime topology
 
@@ -183,8 +208,21 @@ stored capture. Export is available only after that report has been shown.
 
 ## Reconstruction
 
-`xray_lib` exposes stages; the `reconstruct` skill orchestrates them. Each stage
-writes an intermediate artifact, so any stage can be re-run without re-capturing.
+`xray_lib` provides the pure transformations; `xray_cli` wraps them in a binary
+that owns all filesystem work; the `reconstruct` skill drives that binary.
+
+A skill is markdown instructions, with no import mechanism — Claude Code
+executes it through Bash, Read, and Write. It can therefore only reach library
+code across a process boundary, which is precisely why the CLI exists:
+
+```bash
+xray reconstruct <bundle.zip|dir> --out <dir>
+```
+
+Each stage writes an intermediate artifact, so any stage can be re-run without
+re-capturing. The division of labour matters for testability: everything the
+CLI does is covered by `bun test`, and only genuinely model-shaped work (stage
+8) lives in prose the skill carries.
 
 1. **Load and validate** — parse the bundle, read `gaps.json` first so every downstream stage knows what is missing.
 2. **Source-map recovery** — unpack `sourcesContent` into an original file tree. Compute a recovery ratio: the share of bundle bytes covered by maps. Above 80 percent the pipeline enters *recovery mode*, emitting real original files and inferring only the remainder. This fork is decided by data, not configuration.
@@ -234,7 +272,7 @@ reconstruct it, assert the output builds and serves the same routes.
 4. Introspection and coverage meter
 5. `xray_lib` analysis: source maps, schema inference, route model
 6. Deterministic codegen and replay server
-7. `reconstruct` skill and LLM pass
+7. `xray_cli` binary and the `reconstruct` skill
 8. Round-trip end-to-end test
 
 Each milestone is independently useful. After milestone 2 the tool is already a

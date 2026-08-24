@@ -5207,6 +5207,6 @@ git commit -m "feat: source-map discovery and bundle storage"
 - Bundle module splitting and beautification
 - JSON Schema inference and the API model
 - Deterministic codegen and the Hono replay server
-- The `reconstruct` skill and its LLM pass
+- The `xray_cli` binary and the `reconstruct` skill it drives (a separate repo — see the spec's Repositories section for why the CLI cannot live in `xray_lib`)
 - Round-trip end-to-end test
 - WebSocket frame capture is typed in the bundle format and written to `network/websockets.jsonl`, but the CDP handlers for `Network.webSocketFrameSent`/`webSocketFrameReceived` are not wired in these four milestones.
