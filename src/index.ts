@@ -45,3 +45,12 @@ export type {
   CoverageReport,
   EndpointCoverage,
 } from './coverage/coverage';
+
+export { MemoryContentStore } from './bundle/store';
+export type { ContentStore, HashFn } from './bundle/store';
+export {
+  buildBundleFiles,
+  zipBundle,
+  bundleFilename,
+} from './bundle/assemble';
+export type { BundleInput, RuntimeArtifacts } from './bundle/assemble';
