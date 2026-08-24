@@ -1,0 +1,9 @@
+[
+  {
+    "requestId": "3",
+    "url": "https://cdn.example.com/chunk-47.js",
+    "reason": "body-evicted",
+    "ts": 1756029602000,
+    "detail": "No resource with given identifier found"
+  }
+]

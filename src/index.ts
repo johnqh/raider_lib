@@ -12,3 +12,11 @@ export type {
 } from './bundle/types';
 
 export { contentPath, sourcemapPath, extensionForMime } from './bundle/paths';
+
+export {
+  createManifest,
+  validateManifest,
+  toJsonl,
+  parseJsonl,
+} from './bundle/manifest';
+export type { CreateManifestInput, ValidateResult } from './bundle/manifest';

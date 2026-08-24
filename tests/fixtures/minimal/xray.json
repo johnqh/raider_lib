@@ -1,0 +1,16 @@
+{
+  "formatVersion": 1,
+  "sessionId": "fixture-minimal",
+  "origin": "https://example.com",
+  "startedAt": "2026-08-24T10:00:00.000Z",
+  "endedAt": "2026-08-24T10:01:00.000Z",
+  "counts": { "requests": 2, "frames": 0, "bodies": 2, "gaps": 1 },
+  "stack": {
+    "framework": "react",
+    "frameworkVersion": "18.3.1",
+    "router": "react-router",
+    "routerVersion": "6.28.0",
+    "stateLibraries": ["zustand"],
+    "bundler": "vite"
+  }
+}
