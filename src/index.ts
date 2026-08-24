@@ -26,3 +26,11 @@ export type { Pseudonymizer } from './redaction/pseudonym';
 
 export { isSensitiveKey, classifyValue } from './redaction/patterns';
 export { redactHeaders } from './redaction/headers';
+
+export {
+  redactJsonValue,
+  redactJsonText,
+  redactHtmlHydration,
+} from './redaction/json';
+export { redactRequest } from './redaction/index';
+export type { RedactableRequest, RedactedRequest } from './redaction/index';
