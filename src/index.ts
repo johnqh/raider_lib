@@ -62,3 +62,6 @@ export {
   normalizeSourcePath,
 } from './analysis/sourceMap';
 export type { SourceMap, RecoveredFile } from './analysis/sourceMap';
+
+export { inferSchema, unifySchemas } from './analysis/schema';
+export type { JsonSchema } from './analysis/schema';
