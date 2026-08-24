@@ -271,9 +271,10 @@ test('fixture api serves a user list', async () => {
   try {
     const res = await fetch(`http://localhost:${server.port}/api/users`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    // Bun types res.json() as unknown under strict mode; annotate or typecheck fails.
+    const body = (await res.json()) as { users: Array<{ id: number }> };
     expect(Array.isArray(body.users)).toBe(true);
-    expect(body.users[0].id).toBeDefined();
+    expect(body.users[0]!.id).toBeDefined();
   } finally {
     server.stop();
   }
