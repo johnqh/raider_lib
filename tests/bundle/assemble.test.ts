@@ -164,3 +164,15 @@ test('writes an empty source map index when none were discovered', async () => {
   const files = await buildBundleFiles(input);
   expect(JSON.parse(strFromU8(files['sourcemaps/index.json']!))).toEqual({});
 });
+
+test('zips entries large enough to cross fflate’s worker threshold', async () => {
+  // Regression: fflate's async zip() hands large entries to a Web Worker that
+  // receives undefined data under Bun. Every real capture exceeds this size.
+  const files = {
+    'content/big.js': new Uint8Array(500_000).fill(65),
+    'xray.json': new TextEncoder().encode('{}'),
+  };
+  const zipped = await zipBundle(files);
+  const unzipped = unzipSync(zipped);
+  expect(unzipped['content/big.js']!.byteLength).toBe(500_000);
+});

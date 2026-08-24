@@ -1,4 +1,4 @@
-import { zip } from 'fflate';
+import { zipSync } from 'fflate';
 import { contentPath, extensionForMime, sourcemapPath } from './paths';
 import { toJsonl } from './manifest';
 import type {
@@ -86,15 +86,17 @@ export async function buildBundleFiles(
   return files;
 }
 
+/**
+ * Uses zipSync deliberately. fflate's async `zip` offloads entries above a size
+ * threshold to a Web Worker, and under Bun the worker receives undefined data
+ * ("dat.length" of undefined). Small entries stay on the main thread, so the
+ * failure only appears once a real bundle is zipped. Synchronous compression is
+ * correct on every runtime; the cost is a blocking call during a one-shot export.
+ */
 export function zipBundle(
   files: Record<string, Uint8Array>
 ): Promise<Uint8Array> {
-  return new Promise((resolve, reject) => {
-    zip(files, { level: 6 }, (error, data) => {
-      if (error) reject(error);
-      else resolve(data);
-    });
-  });
+  return Promise.resolve(zipSync(files, { level: 6 }));
 }
 
 export function bundleFilename(origin: string, startedAt: string): string {
