@@ -1,6 +1,6 @@
 {
   "name": "@sudobility/xray_lib",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Bundle format, redaction, and analysis for xray web app capture",
   "license": "BUSL-1.1",
   "author": "Sudobility Inc.",
