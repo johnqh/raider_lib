@@ -45,3 +45,35 @@ export type {
   CoverageReport,
   EndpointCoverage,
 } from './coverage/coverage';
+
+export { MemoryContentStore } from './bundle/store';
+export type { ContentStore, HashFn } from './bundle/store';
+export {
+  buildBundleFiles,
+  zipBundle,
+  bundleFilename,
+} from './bundle/assemble';
+export type { BundleInput, RuntimeArtifacts } from './bundle/assemble';
+
+export {
+  parseSourceMap,
+  recoverSources,
+  recoveryRatio,
+  normalizeSourcePath,
+} from './analysis/sourceMap';
+export type { SourceMap, RecoveredFile } from './analysis/sourceMap';
+
+export { inferSchema, unifySchemas } from './analysis/schema';
+export type { JsonSchema } from './analysis/schema';
+
+export { buildApiModel } from './analysis/apiModel';
+export type { ApiModel, EndpointModel, EndpointSample } from './analysis/apiModel';
+export { buildRouteModel } from './analysis/routeModel';
+export type { RouteModel, RouteModelInput } from './analysis/routeModel';
+
+export { schemaToType, declareType, typeNameFor } from './codegen/types';
+export { generateTypes, generateClient, methodNameFor } from './codegen/client';
+export { generateReplayServer, templateToHonoPath } from './codegen/replay';
+
+export { generateProject, pageNameFor } from './codegen/project';
+export type { ProjectInput } from './codegen/project';
