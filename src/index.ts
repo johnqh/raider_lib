@@ -80,3 +80,6 @@ export type { ProjectInput } from './codegen/project';
 
 export { deriveTimeline } from './analysis/navigations';
 export type { DerivedNavigation, DerivedTimeline } from './analysis/navigations';
+
+export { auditLinks } from './analysis/linkAudit';
+export type { LinkAudit, AuditPage, UnreachableLink } from './analysis/linkAudit';
