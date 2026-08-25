@@ -28,6 +28,13 @@ export interface BundleInput {
   redaction: RedactionEntry[];
   /** script URL → content hash of its source map */
   sourceMaps: Record<string, string>;
+  /**
+   * Route path → content hash of the rendered DOM at navigation time. Present
+   * only for client-rendered routes, where no document was ever served and the
+   * DOM is the sole evidence the page existed. Kept apart from `content` so
+   * "what the server sent" is never confused with "what the DOM looked like".
+   */
+  snapshots?: Record<string, string>;
   runtime: RuntimeArtifacts;
 }
 
@@ -82,6 +89,15 @@ export async function buildBundleFiles(
     if (bytes) files[path] = bytes;
   }
   files['sourcemaps/index.json'] = json(input.sourceMaps);
+
+  const snapshots = input.snapshots ?? {};
+  for (const hash of Object.values(snapshots)) {
+    const path = `snapshots/${hash}.html`;
+    if (files[path]) continue;
+    const bytes = await input.store.get(hash);
+    if (bytes) files[path] = bytes;
+  }
+  files['snapshots/index.json'] = json(snapshots);
 
   return files;
 }

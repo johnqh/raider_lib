@@ -72,6 +72,7 @@ async function fixtureInput() {
         { placeholder: '<JWT:a1b2>', kind: 'jwt' as const, occurrences: 4 },
       ],
       sourceMaps: {} as Record<string, string>,
+      snapshots: {} as Record<string, string>,
       runtime: {
         framework: { framework: 'react' },
         routes: [],
@@ -175,4 +176,24 @@ test('zips entries large enough to cross fflate’s worker threshold', async () 
   const zipped = await zipBundle(files);
   const unzipped = unzipSync(zipped);
   expect(unzipped['content/big.js']!.byteLength).toBe(500_000);
+});
+
+test('writes rendered-DOM snapshots separately from served content', async () => {
+  const { store, input } = await fixtureInput();
+  const html = '<html><body>client-rendered /league</body></html>';
+  const hash = await store.put(encoder.encode(html));
+  input.snapshots = { '/league': hash };
+
+  const files = await buildBundleFiles(input);
+  expect(strFromU8(files[`snapshots/${hash}.html`]!)).toBe(html);
+  // The index maps route → hash, so a consumer knows which page it belongs to.
+  expect(JSON.parse(strFromU8(files['snapshots/index.json']!))['/league']).toBe(hash);
+  // And it must not leak into the byte-exact served content.
+  expect(Object.keys(files)).not.toContain(`content/${hash}.html`);
+});
+
+test('an empty snapshot index is still written', async () => {
+  const { input } = await fixtureInput();
+  const files = await buildBundleFiles(input);
+  expect(JSON.parse(strFromU8(files['snapshots/index.json']!))).toEqual({});
 });
