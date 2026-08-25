@@ -93,3 +93,19 @@ test('CORS preflights are transport, not API surface', () => {
   });
   expect(model.routes[0]!.endpoints).toEqual(['GET /api/me']);
 });
+
+test('endpoints under a navigation no route matched surface as unattributed', () => {
+  // Regression: a real capture of a server-rendered site produced 26 endpoints
+  // and reported 1, because the other 25 were attributed to navigations that
+  // matched no route and were dropped without trace.
+  const model = buildRouteModel({
+    routes: [],
+    navigations: [{ navigationId: 'doc1', path: '/anything' }],
+    requests: [
+      { method: 'GET', url: 'https://x.com/api/a', navigationId: 'doc1', resourceType: 'Fetch' },
+      { method: 'GET', url: 'https://x.com/api/b', navigationId: 'doc1', resourceType: 'Fetch' },
+    ],
+  });
+  expect(model.routes).toEqual([]);
+  expect(model.unattributed.sort()).toEqual(['GET /api/a', 'GET /api/b']);
+});

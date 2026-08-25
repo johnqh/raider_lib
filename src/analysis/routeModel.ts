@@ -91,5 +91,15 @@ export function buildRouteModel(input: RouteModelInput): RouteModel {
     };
   });
 
+  // An endpoint attributed to a navigation that no route matched would
+  // otherwise vanish from the model entirely — neither under a route nor in
+  // `unattributed`. Silent loss is the one outcome the format must never have.
+  const claimed = new Set(routes.flatMap((route) => route.endpoints));
+  for (const keys of byNavigation.values()) {
+    for (const key of keys) {
+      if (!claimed.has(key) && !unattributed.includes(key)) unattributed.push(key);
+    }
+  }
+
   return { routes, unattributed };
 }

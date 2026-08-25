@@ -45,12 +45,20 @@ test('serves the built app with SPA fallback so deep links resolve', () => {
 
 test('uncaptured paths under an observed API prefix return 501, not the SPA shell', () => {
   const out = generateReplayServer(MODEL);
-  // The guard must be registered before the static fallback, or the SPA
-  // catch-all answers 200 with index.html and the gap disappears.
+  const staticAt = out.indexOf("app.use('/*', serveStatic");
   const guardAt = out.indexOf("app.all('/api/*'");
   const fallbackAt = out.indexOf("app.get('*'");
+
+  expect(staticAt).toBeGreaterThan(-1);
   expect(guardAt).toBeGreaterThan(-1);
   expect(fallbackAt).toBeGreaterThan(-1);
+
+  // Static must win first: an endpoint prefix can also be a real content
+  // directory — /hologram/artifacts/*.json makes /hologram an "API prefix",
+  // but /hologram/web/index.html is a page that must still be served.
+  expect(staticAt).toBeLessThan(guardAt);
+  // The guard must still precede the SPA fallback, or the gap disappears
+  // behind a 200 and the app shell.
   expect(guardAt).toBeLessThan(fallbackAt);
 });
 

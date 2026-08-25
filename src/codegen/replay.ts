@@ -59,12 +59,16 @@ function respond(c: Context, key: string) {
 
 ${routes}
 
-// Anything else under an observed API prefix was never captured. Answering it
-// with the SPA shell would look like success; 501 says what is actually true.
+// Static assets first: an endpoint prefix like /hologram can also be a real
+// content directory, and a file that exists must always win over a guard.
+app.use('/*', serveStatic({ root: './dist' }));
+
+// Only then: paths under an observed API prefix that were never captured.
+// Answering these with the SPA shell would look like success; 501 says what is
+// actually true.
 ${gapGuards}
 
-// Static assets, then SPA fallback so client-side routes resolve on reload.
-app.use('/*', serveStatic({ root: './dist' }));
+// Finally the SPA fallback, so client-side routes resolve on reload.
 app.get('*', serveStatic({ path: './dist/index.html' }));
 
 const port = Number(process.env.PORT ?? 8787);

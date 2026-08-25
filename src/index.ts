@@ -77,3 +77,6 @@ export { generateReplayServer, templateToHonoPath } from './codegen/replay';
 
 export { generateProject, pageNameFor } from './codegen/project';
 export type { ProjectInput } from './codegen/project';
+
+export { deriveTimeline } from './analysis/navigations';
+export type { DerivedNavigation, DerivedTimeline } from './analysis/navigations';
