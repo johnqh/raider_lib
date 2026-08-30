@@ -91,7 +91,7 @@ test('lays out every required bundle path', async () => {
   const files = await buildBundleFiles(input);
   const paths = Object.keys(files).sort();
 
-  expect(paths).toContain('xray.json');
+  expect(paths).toContain('raider.json');
   expect(paths).toContain('network/requests.jsonl');
   expect(paths).toContain('network/websockets.jsonl');
   expect(paths).toContain('gaps.json');
@@ -132,12 +132,12 @@ test('zips into an archive that unzips back to the same files', async () => {
   const files = await buildBundleFiles(input);
   const zipped = await zipBundle(files);
   const unzipped = unzipSync(zipped);
-  expect(strFromU8(unzipped['xray.json']!)).toBe(strFromU8(files['xray.json']!));
+  expect(strFromU8(unzipped['raider.json']!)).toBe(strFromU8(files['raider.json']!));
 });
 
 test('filename encodes host and start time', () => {
   expect(bundleFilename('https://app.example.com', '2026-08-24T10:05:00.000Z')).toBe(
-    'xray-app.example.com-20260824-1005.zip'
+    'raider-app.example.com-20260824-1005.zip'
   );
 });
 
@@ -171,7 +171,7 @@ test('zips entries large enough to cross fflate’s worker threshold', async () 
   // receives undefined data under Bun. Every real capture exceeds this size.
   const files = {
     'content/big.js': new Uint8Array(500_000).fill(65),
-    'xray.json': new TextEncoder().encode('{}'),
+    'raider.json': new TextEncoder().encode('{}'),
   };
   const zipped = await zipBundle(files);
   const unzipped = unzipSync(zipped);

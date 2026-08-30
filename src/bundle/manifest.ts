@@ -1,5 +1,5 @@
-import { XRAY_FORMAT_VERSION } from '../index';
-import type { XrayManifest } from './types';
+import { RAIDER_FORMAT_VERSION } from '../index';
+import type { RaiderManifest } from './types';
 
 export interface CreateManifestInput {
   sessionId: string;
@@ -7,9 +7,9 @@ export interface CreateManifestInput {
   startedAt: string;
 }
 
-export function createManifest(input: CreateManifestInput): XrayManifest {
+export function createManifest(input: CreateManifestInput): RaiderManifest {
   return {
-    formatVersion: XRAY_FORMAT_VERSION,
+    formatVersion: RAIDER_FORMAT_VERSION,
     sessionId: input.sessionId,
     origin: input.origin,
     startedAt: input.startedAt,
@@ -20,7 +20,7 @@ export function createManifest(input: CreateManifestInput): XrayManifest {
 }
 
 export type ValidateResult =
-  | { ok: true; manifest: XrayManifest }
+  | { ok: true; manifest: RaiderManifest }
   | { ok: false; errors: string[] };
 
 export function validateManifest(value: unknown): ValidateResult {
@@ -30,9 +30,9 @@ export function validateManifest(value: unknown): ValidateResult {
   }
   const v = value as Record<string, unknown>;
 
-  if (v.formatVersion !== XRAY_FORMAT_VERSION) {
+  if (v.formatVersion !== RAIDER_FORMAT_VERSION) {
     errors.push(
-      `formatVersion must be ${XRAY_FORMAT_VERSION}, got ${String(v.formatVersion)}`
+      `formatVersion must be ${RAIDER_FORMAT_VERSION}, got ${String(v.formatVersion)}`
     );
   }
   for (const key of ['sessionId', 'origin', 'startedAt'] as const) {
@@ -44,7 +44,7 @@ export function validateManifest(value: unknown): ValidateResult {
 
   return errors.length > 0
     ? { ok: false, errors }
-    : { ok: true, manifest: value as XrayManifest };
+    : { ok: true, manifest: value as RaiderManifest };
 }
 
 export function toJsonl(rows: unknown[]): string {

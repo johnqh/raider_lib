@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@sudobility/xray_lib",
+      "name": "@sudobility/raider_lib",
       "dependencies": {
         "fflate": "^0.8.2",
       },

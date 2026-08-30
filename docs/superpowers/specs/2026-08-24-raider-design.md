@@ -1,11 +1,11 @@
-# xray — Design
+# raider — Design
 
 **Date:** 2026-08-24
 **Status:** Approved (brainstorming complete, pending implementation plan)
 
 ## Summary
 
-xray is a Chrome extension plus a companion TypeScript library that capture a
+raider is a Chrome extension plus a companion TypeScript library that capture a
 running web app's complete network traffic and live runtime state, then
 reconstruct a faithful clone of that app as a new project.
 
@@ -41,33 +41,33 @@ the operator's responsibility.
 
 | Repo | Package | Role |
 |---|---|---|
-| `xray_lib` | `@sudobility/xray_lib`, BUSL-1.1 | Bundle format types and pure analysis: redaction, coverage, schema inference |
-| `xray_extension` | private | MV3 extension: capture, introspection, coverage UI, redaction, export |
-| `xray_cli` | `@sudobility/xray_cli`, BUSL-1.1 | Reconstruction CLI and the Claude Code `reconstruct` skill |
+| `raider_lib` | `@sudobility/raider_lib`, BUSL-1.1 | Bundle format types and pure analysis: redaction, coverage, schema inference |
+| `raider_extension` | private | MV3 extension: capture, introspection, coverage UI, redaction, export |
+| `raider_cli` | `@sudobility/raider_cli`, BUSL-1.1 | Reconstruction CLI and the Claude Code `reconstruct` skill |
 
 The dependency shape is a diamond, not a chain:
 
 ```
-xray_lib              pure: bundle format, redaction, coverage, inference
-   ├── xray_extension   browser: CDP capture, offscreen buffer, side panel
-   └── xray_cli         node: unzip, filesystem, codegen + the reconstruct skill
+raider_lib              pure: bundle format, redaction, coverage, inference
+   ├── raider_extension   browser: CDP capture, offscreen buffer, side panel
+   └── raider_cli         node: unzip, filesystem, codegen + the reconstruct skill
 ```
 
-`xray_lib` performs **no I/O** — no filesystem, and no `DOM` in its tsconfig
+`raider_lib` performs **no I/O** — no filesystem, and no `DOM` in its tsconfig
 `lib`. That constraint is mechanically enforced rather than merely intended,
 and it is what lets the package be imported into a Chrome MV3 bundle and tested
 in milliseconds with no environment.
 
 A CLI is the opposite: it needs `fs`, `path`, `process`, and zip extraction.
-Placing it in `xray_lib` would put Node-only code in the dependency graph of a
+Placing it in `raider_lib` would put Node-only code in the dependency graph of a
 browser artifact and end that enforcement the moment one file reads from disk.
 Hence the third repository. The two consumers never depend on each other.
 
 Stack follows the existing extension family (`testomniac_extension`): Vite,
-`@crxjs/vite-plugin`, React, TypeScript, Bun, Tailwind. `xray_cli` is a Bun
+`@crxjs/vite-plugin`, React, TypeScript, Bun, Tailwind. `raider_cli` is a Bun
 binary.
 
-The bundle format types live in `xray_lib` alone and are imported by both
+The bundle format types live in `raider_lib` alone and are imported by both
 consumers. The format cannot drift between producer and consumer, and
 `formatVersion` makes a mismatch fail loudly at `validateManifest` rather than
 producing a subtly wrong reconstruction.
@@ -140,8 +140,8 @@ bundle. Sessions are resumable across reloads and browser restarts.
 ## Bundle format
 
 ```
-xray-<host>-<YYYYMMDD-HHmm>/
-  xray.json            manifest — the skill's entry point
+raider-<host>-<YYYYMMDD-HHmm>/
+  raider.json            manifest — the skill's entry point
   network/
     requests.jsonl     one redacted request/response per line, bodies by hash
     websockets.jsonl   frames, same shape
@@ -208,7 +208,7 @@ stored capture. Export is available only after that report has been shown.
 
 ## Reconstruction
 
-`xray_lib` provides the pure transformations; `xray_cli` wraps them in a binary
+`raider_lib` provides the pure transformations; `raider_cli` wraps them in a binary
 that owns all filesystem work; the `reconstruct` skill drives that binary.
 
 A skill is markdown instructions, with no import mechanism — Claude Code
@@ -216,7 +216,7 @@ executes it through Bash, Read, and Write. It can therefore only reach library
 code across a process boundary, which is precisely why the CLI exists:
 
 ```bash
-xray reconstruct <bundle.zip|dir> --out <dir>
+raider reconstruct <bundle.zip|dir> --out <dir>
 ```
 
 Each stage writes an intermediate artifact, so any stage can be re-run without
@@ -239,7 +239,7 @@ CLI does is covered by `bun test`, and only genuinely model-shaped work (stage
 Governing rule: **gaps propagate as gaps.** Nothing is invented to cover
 missing capture.
 
-- Uncaptured body → `// XRAY-GAP: chunk 47 (route /admin) never captured` in generated source, plus a line in the final report.
+- Uncaptured body → `// RAIDER-GAP: chunk 47 (route /admin) never captured` in generated source, plus a line in the final report.
 - Another debugger attaches, or the operator detaches → session pauses, panel warns, capture resumes with the buffer intact.
 - IndexedDB quota pressure → warn at threshold and offer partial export rather than failing at 95 percent.
 - Opaque or CORS-blocked responses → recorded as a gap with reason, not skipped.
@@ -247,7 +247,7 @@ missing capture.
 
 ## Testing
 
-`xray_lib` is pure functions over fixtures, developed test-first with `bun test`.
+`raider_lib` is pure functions over fixtures, developed test-first with `bun test`.
 Golden-file tests take a fixture bundle and snapshot `api-model.json`. Schema
 inference and path-template clustering carry the heaviest unit coverage; subtle
 wrongness hides there.
@@ -266,13 +266,13 @@ reconstruct it, assert the output builds and serves the same routes.
 
 ## Build order
 
-1. `xray_lib` bundle types and fixtures
+1. `raider_lib` bundle types and fixtures
 2. Extension capture core (CDP → offscreen → IndexedDB) and export
 3. Redaction and review UI
 4. Introspection and coverage meter
-5. `xray_lib` analysis: source maps, schema inference, route model
+5. `raider_lib` analysis: source maps, schema inference, route model
 6. Deterministic codegen and replay server
-7. `xray_cli` binary and the `reconstruct` skill
+7. `raider_cli` binary and the `reconstruct` skill
 8. Round-trip end-to-end test
 
 Each milestone is independently useful. After milestone 2 the tool is already a

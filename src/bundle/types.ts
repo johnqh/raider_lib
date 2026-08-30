@@ -71,7 +71,7 @@ export interface StackFingerprint {
   bundler: 'webpack' | 'vite' | 'unknown';
 }
 
-export interface XrayManifest {
+export interface RaiderManifest {
   formatVersion: 1;
   sessionId: string;
   origin: string;

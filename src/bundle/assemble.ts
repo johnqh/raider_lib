@@ -6,7 +6,7 @@ import type {
   CapturedRequest,
   Gap,
   RedactionEntry,
-  XrayManifest,
+  RaiderManifest,
 } from './types';
 import type { ContentStore } from './store';
 
@@ -21,7 +21,7 @@ export interface RuntimeArtifacts {
 
 export interface BundleInput {
   store: ContentStore;
-  manifest: XrayManifest;
+  manifest: RaiderManifest;
   requests: CapturedRequest[];
   frames: CapturedFrame[];
   gaps: Gap[];
@@ -48,7 +48,7 @@ export async function buildBundleFiles(
   input: BundleInput
 ): Promise<Record<string, Uint8Array>> {
   const files: Record<string, Uint8Array> = {
-    'xray.json': json(input.manifest),
+    'raider.json': json(input.manifest),
     'network/requests.jsonl': encoder.encode(toJsonl(input.requests)),
     'network/websockets.jsonl': encoder.encode(toJsonl(input.frames)),
     'gaps.json': json(input.gaps),
@@ -119,5 +119,5 @@ export function bundleFilename(origin: string, startedAt: string): string {
   const host = new URL(origin).host;
   const date = startedAt.slice(0, 10).replace(/-/g, '');
   const time = startedAt.slice(11, 16).replace(':', '');
-  return `xray-${host}-${date}-${time}.zip`;
+  return `raider-${host}-${date}-${time}.zip`;
 }
