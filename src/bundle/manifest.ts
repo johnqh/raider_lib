@@ -1,5 +1,5 @@
-import { RAIDER_FORMAT_VERSION } from '../index';
-import type { RaiderManifest } from './types';
+import { RAIDR_FORMAT_VERSION } from '../index';
+import type { RaidrManifest } from './types';
 
 export interface CreateManifestInput {
   sessionId: string;
@@ -7,9 +7,9 @@ export interface CreateManifestInput {
   startedAt: string;
 }
 
-export function createManifest(input: CreateManifestInput): RaiderManifest {
+export function createManifest(input: CreateManifestInput): RaidrManifest {
   return {
-    formatVersion: RAIDER_FORMAT_VERSION,
+    formatVersion: RAIDR_FORMAT_VERSION,
     sessionId: input.sessionId,
     origin: input.origin,
     startedAt: input.startedAt,
@@ -20,7 +20,7 @@ export function createManifest(input: CreateManifestInput): RaiderManifest {
 }
 
 export type ValidateResult =
-  | { ok: true; manifest: RaiderManifest }
+  | { ok: true; manifest: RaidrManifest }
   | { ok: false; errors: string[] };
 
 export function validateManifest(value: unknown): ValidateResult {
@@ -30,9 +30,9 @@ export function validateManifest(value: unknown): ValidateResult {
   }
   const v = value as Record<string, unknown>;
 
-  if (v.formatVersion !== RAIDER_FORMAT_VERSION) {
+  if (v.formatVersion !== RAIDR_FORMAT_VERSION) {
     errors.push(
-      `formatVersion must be ${RAIDER_FORMAT_VERSION}, got ${String(v.formatVersion)}`
+      `formatVersion must be ${RAIDR_FORMAT_VERSION}, got ${String(v.formatVersion)}`
     );
   }
   for (const key of ['sessionId', 'origin', 'startedAt'] as const) {
@@ -44,7 +44,7 @@ export function validateManifest(value: unknown): ValidateResult {
 
   return errors.length > 0
     ? { ok: false, errors }
-    : { ok: true, manifest: value as RaiderManifest };
+    : { ok: true, manifest: value as RaidrManifest };
 }
 
 export function toJsonl(rows: unknown[]): string {

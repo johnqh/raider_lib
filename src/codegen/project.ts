@@ -64,7 +64,7 @@ function pageHeader(route: ProjectInput['routes'][number]): string {
   if (!route.visited) {
     lines.push(
       ' *',
-      ' * RAIDER-GAP: this route was never visited during capture; there is no',
+      ' * RAIDR-GAP: this route was never visited during capture; there is no',
       ' * runtime evidence for its content. Only the router shell is reproduced.'
     );
   }
@@ -257,7 +257,7 @@ createRoot(container).render(<RouterProvider router={router} />);
   }
 
   if (input.gaps.length > 0) {
-    files['RAIDER-GAPS.md'] = [
+    files['RAIDR-GAPS.md'] = [
       '# Capture gaps',
       '',
       'These resources were requested by the original app but not captured.',

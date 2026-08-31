@@ -1,4 +1,4 @@
-export const RAIDER_FORMAT_VERSION = 1 as const;
+export const RAIDR_FORMAT_VERSION = 1 as const;
 
 export type {
   CapturedRequest,
@@ -8,7 +8,7 @@ export type {
   RedactionEntry,
   RedactionKind,
   StackFingerprint,
-  RaiderManifest,
+  RaidrManifest,
 } from './bundle/types';
 
 export { contentPath, sourcemapPath, extensionForMime } from './bundle/paths';

@@ -74,12 +74,12 @@ test('lazy routes are emitted as dynamic imports', () => {
   expect(generateProject(BASE)['src/router.tsx']!).toContain('lazy(');
 });
 
-test('a page whose route was never visited carries an RAIDER-GAP marker', () => {
+test('a page whose route was never visited carries an RAIDR-GAP marker', () => {
   const files = generateProject({
     ...BASE,
     routes: [{ path: '/admin', params: [], visited: false, endpoints: [], lazy: true }],
   });
-  expect(files['src/pages/Admin.tsx']).toContain('RAIDER-GAP');
+  expect(files['src/pages/Admin.tsx']).toContain('RAIDR-GAP');
   expect(files['src/pages/Admin.tsx']).toContain('never visited');
 });
 
@@ -120,10 +120,10 @@ test('gaps from the capture are recorded in the project README', () => {
       },
     ],
   });
-  expect(files['RAIDER-GAPS.md']).toContain('chunk-47.js');
-  expect(files['RAIDER-GAPS.md']).toContain('body-evicted');
+  expect(files['RAIDR-GAPS.md']).toContain('chunk-47.js');
+  expect(files['RAIDR-GAPS.md']).toContain('body-evicted');
 });
 
 test('no gaps means no gaps file', () => {
-  expect(generateProject(BASE)['RAIDER-GAPS.md']).toBeUndefined();
+  expect(generateProject(BASE)['RAIDR-GAPS.md']).toBeUndefined();
 });

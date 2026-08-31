@@ -1,27 +1,27 @@
-# raider Reconstruction Implementation Plan
+# raidr Reconstruction Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn an raider capture bundle into a working reconstruction of the captured web app — via a `raider_cli` binary that performs every deterministic stage, and a Claude Code `reconstruct` skill that drives it and supplies the judgment the binary cannot.
+**Goal:** Turn an raidr capture bundle into a working reconstruction of the captured web app — via a `raidr_cli` binary that performs every deterministic stage, and a Claude Code `reconstruct` skill that drives it and supplies the judgment the binary cannot.
 
-**Architecture:** Pure transformations (schema inference, source-map parsing, route modelling, codegen templates) live in `raider_lib` and are tested headlessly. All filesystem work — unzip, read, emit, spawn — lives in `raider_cli`. The skill is markdown that shells out to the CLI and then does per-route implementation work against the CLI's intermediate artifacts.
+**Architecture:** Pure transformations (schema inference, source-map parsing, route modelling, codegen templates) live in `raidr_lib` and are tested headlessly. All filesystem work — unzip, read, emit, spawn — lives in `raidr_cli`. The skill is markdown that shells out to the CLI and then does per-route implementation work against the CLI's intermediate artifacts.
 
 **Tech Stack:** Bun, TypeScript 5.7+, `fflate` (unzip), `prettier` (beautify + format emitted code), `hono` (replay server), Playwright (fixture generation only).
 
-**Spec:** `docs/superpowers/specs/2026-08-24-raider-design.md` (in `raider_lib`), stages 1–9 of the Reconstruction section.
+**Spec:** `docs/superpowers/specs/2026-08-24-raidr-design.md` (in `raidr_lib`), stages 1–9 of the Reconstruction section.
 
-**Predecessor:** `docs/superpowers/plans/2026-08-24-raider-capture.md` — milestones 1–4, shipped.
+**Predecessor:** `docs/superpowers/plans/2026-08-24-raidr-capture.md` — milestones 1–4, shipped.
 
 **Scope:** Milestones 5–8. Covers stages 1–9 in full.
 
 ## Global Constraints
 
 - Package manager is **Bun**. Never npm, yarn, or pnpm.
-- `raider_lib` (`@sudobility/raider_lib`, BUSL-1.1) performs **no I/O**: no `fs`, no `chrome.*`, no `DOM` in its tsconfig `lib`. Enforced mechanically — a stray `window` or `readFile` fails typecheck.
-- `raider_cli` (`@sudobility/raider_cli`, BUSL-1.1) owns every filesystem and process operation.
-- `raider_extension` is `private: true`.
+- `raidr_lib` (`@sudobility/raidr_lib`, BUSL-1.1) performs **no I/O**: no `fs`, no `chrome.*`, no `DOM` in its tsconfig `lib`. Enforced mechanically — a stray `window` or `readFile` fails typecheck.
+- `raidr_cli` (`@sudobility/raidr_cli`, BUSL-1.1) owns every filesystem and process operation.
+- `raidr_extension` is `private: true`.
 - Bundle `formatVersion` is `1`. `validateManifest` must reject anything else before analysis begins.
-- **Gaps propagate as gaps.** No stage may invent, guess, or silently drop data missing from the bundle. Every generated file that stands on missing capture carries an `RAIDER-GAP` marker naming what was absent.
+- **Gaps propagate as gaps.** No stage may invent, guess, or silently drop data missing from the bundle. Every generated file that stands on missing capture carries an `RAIDR-GAP` marker naming what was absent.
 - Generated projects must pass `bun install && bun run typecheck && bun run build`. A reconstruction that does not build is not a reconstruction.
 - Fixture bundles are produced by the **same** `buildBundleFiles` the extension uses. Fixtures that drift from real output are worse than no fixtures.
 
@@ -29,7 +29,7 @@
 
 ## File Structure
 
-### `raider_lib` (additions)
+### `raidr_lib` (additions)
 
 | File | Responsibility |
 |---|---|
@@ -45,7 +45,7 @@
 | `src/codegen/replay.ts` | API model → Hono replay server source. |
 | `src/codegen/project.ts` | package.json / vite config / router source. |
 
-### `raider_cli`
+### `raidr_cli`
 
 | File | Responsibility |
 |---|---|
@@ -66,21 +66,21 @@
 
 # Milestone 5 — Real fixtures
 
-### Task 19: Move bundle assembly into `raider_lib`
+### Task 19: Move bundle assembly into `raidr_lib`
 
 Fixtures are worthless if they are not shaped exactly like the extension's
 output. Sharing one implementation is the only way to guarantee that.
 
 **Files:**
-- Create: `~/projects/raider_lib/src/bundle/store.ts`
-- Create: `~/projects/raider_lib/src/bundle/assemble.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Delete: `~/projects/raider_extension/src/offscreen/exporter.ts`
-- Modify: `~/projects/raider_extension/src/offscreen/index.ts`, `src/offscreen/sessionState.ts`, `src/offscreen/store.ts`
-- Move: `~/projects/raider_extension/tests/offscreen/exporter.test.ts` → `~/projects/raider_lib/tests/bundle/assemble.test.ts`
+- Create: `~/projects/raidr_lib/src/bundle/store.ts`
+- Create: `~/projects/raidr_lib/src/bundle/assemble.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Delete: `~/projects/raidr_extension/src/offscreen/exporter.ts`
+- Modify: `~/projects/raidr_extension/src/offscreen/index.ts`, `src/offscreen/sessionState.ts`, `src/offscreen/store.ts`
+- Move: `~/projects/raidr_extension/tests/offscreen/exporter.test.ts` → `~/projects/raidr_lib/tests/bundle/assemble.test.ts`
 
 **Interfaces:**
-- Produces (from `@sudobility/raider_lib`):
+- Produces (from `@sudobility/raidr_lib`):
   - `interface ContentStore { put(bytes: Uint8Array): Promise<string>; get(hash: string): Promise<Uint8Array | null>; has(hash: string): Promise<boolean>; count(): Promise<number>; totalBytes(): Promise<number> }`
   - `class MemoryContentStore implements ContentStore` — constructor `(hash: (bytes: Uint8Array) => Promise<string>)`
   - `buildBundleFiles(input: BundleInput): Promise<Record<string, Uint8Array>>`
@@ -88,14 +88,14 @@ output. Sharing one implementation is the only way to guarantee that.
   - `bundleFilename(origin: string, startedAt: string): string`
   - `interface BundleInput`, `interface RuntimeArtifacts`
 
-`MemoryContentStore` takes the hash function by injection because `raider_lib`
+`MemoryContentStore` takes the hash function by injection because `raidr_lib`
 may not assume `crypto.subtle` exists; the extension and the CLI each pass
 their own.
 
 - [ ] **Step 1: Write the failing test**
 
 Move the existing `tests/offscreen/exporter.test.ts` to
-`~/projects/raider_lib/tests/bundle/assemble.test.ts`, replacing the
+`~/projects/raidr_lib/tests/bundle/assemble.test.ts`, replacing the
 `IdbContentStore` + `fake-indexeddb` setup with `MemoryContentStore`:
 
 ```ts
@@ -133,7 +133,7 @@ zip round-trip, the filename test, and both source-map tests.
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/bundle/assemble.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/bundle/assemble.test.ts`
 Expected: FAIL — `MemoryContentStore` is not exported
 
 - [ ] **Step 3: Write `src/bundle/store.ts`**
@@ -150,7 +150,7 @@ export interface ContentStore {
 export type HashFn = (bytes: Uint8Array) => Promise<string>;
 
 /**
- * In-memory content store. The hash function is injected because raider_lib
+ * In-memory content store. The hash function is injected because raidr_lib
  * cannot assume a platform crypto API exists.
  */
 export class MemoryContentStore implements ContentStore {
@@ -186,11 +186,11 @@ export class MemoryContentStore implements ContentStore {
 
 - [ ] **Step 4: Move the assembler**
 
-Copy `raider_extension/src/offscreen/exporter.ts` to
-`raider_lib/src/bundle/assemble.ts` unchanged except its imports: it now imports
+Copy `raidr_extension/src/offscreen/exporter.ts` to
+`raidr_lib/src/bundle/assemble.ts` unchanged except its imports: it now imports
 `contentPath`, `extensionForMime`, `sourcemapPath`, `toJsonl` from sibling
 modules (`../bundle/paths`, `../bundle/manifest`) and `ContentStore` from
-`./store` instead of `@sudobility/raider_lib` and `./store`.
+`./store` instead of `@sudobility/raidr_lib` and `./store`.
 
 - [ ] **Step 5: Export from `src/index.ts`**
 
@@ -207,32 +207,32 @@ export type { BundleInput, RuntimeArtifacts } from './bundle/assemble';
 
 - [ ] **Step 6: Point the extension at the library**
 
-Delete `raider_extension/src/offscreen/exporter.ts` and
+Delete `raidr_extension/src/offscreen/exporter.ts` and
 `tests/offscreen/exporter.test.ts`. In `src/offscreen/store.ts`, delete the
 local `ContentStore` interface and re-export the library's:
 
 ```ts
-import type { ContentStore } from '@sudobility/raider_lib';
+import type { ContentStore } from '@sudobility/raidr_lib';
 export type { ContentStore };
 ```
 
 `IdbContentStore` stays — it is the browser implementation. In
 `src/offscreen/index.ts` and `src/offscreen/sessionState.ts`, change the
-`./exporter` imports to `@sudobility/raider_lib`.
+`./exporter` imports to `@sudobility/raidr_lib`.
 
 - [ ] **Step 7: Verify both repos**
 
 ```bash
-cd ~/projects/raider_lib && bun test && bun run typecheck && bun run build
-cd ~/projects/raider_extension && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_lib && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_extension && bun test && bun run typecheck && bun run build
 ```
 Expected: lib gains the assembler tests; extension loses them and keeps the rest green. No behaviour change.
 
 - [ ] **Step 8: Commit both repos**
 
 ```bash
-cd ~/projects/raider_lib && git add -A && git commit -m "refactor: move bundle assembly into the library for producer sharing"
-cd ~/projects/raider_extension && git add -A && git commit -m "refactor: consume bundle assembly from raider_lib"
+cd ~/projects/raidr_lib && git add -A && git commit -m "refactor: move bundle assembly into the library for producer sharing"
+cd ~/projects/raidr_extension && git add -A && git commit -m "refactor: consume bundle assembly from raidr_lib"
 ```
 
 ---
@@ -243,11 +243,11 @@ Real minified output with real lazy chunks and real source maps. Nothing here
 is a mock — these are ordinary Vite apps that get built and served.
 
 **Files:**
-- Create: `~/projects/raider_cli/fixtures/api/server.ts`
-- Create: `~/projects/raider_cli/fixtures/apps/react-sample/` (Vite + React + react-router)
-- Create: `~/projects/raider_cli/fixtures/apps/vue-sample/` (Vite + Vue + vue-router)
-- Create: `~/projects/raider_cli/package.json`, `tsconfig.json`
-- Test: `~/projects/raider_cli/tests/fixtures/apps.test.ts`
+- Create: `~/projects/raidr_cli/fixtures/api/server.ts`
+- Create: `~/projects/raidr_cli/fixtures/apps/react-sample/` (Vite + React + react-router)
+- Create: `~/projects/raidr_cli/fixtures/apps/vue-sample/` (Vite + Vue + vue-router)
+- Create: `~/projects/raidr_cli/package.json`, `tsconfig.json`
+- Test: `~/projects/raidr_cli/tests/fixtures/apps.test.ts`
 
 **Interfaces:**
 - Produces: two buildable apps and one API server; `startFixtureApi(port: number)` exported from `fixtures/api/server.ts`
@@ -348,19 +348,19 @@ records actually omit the field.
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_cli && bun test`
+Run: `cd ~/projects/raidr_cli && bun test`
 Expected: FAIL — cannot resolve `../../fixtures/api/server`
 
-- [ ] **Step 3: Create `raider_cli/package.json`**
+- [ ] **Step 3: Create `raidr_cli/package.json`**
 
 ```json
 {
-  "name": "@sudobility/raider_cli",
+  "name": "@sudobility/raidr_cli",
   "version": "0.0.1",
-  "description": "Reconstruct a web app from an raider capture bundle",
+  "description": "Reconstruct a web app from an raidr capture bundle",
   "license": "BUSL-1.1",
   "type": "module",
-  "bin": { "raider": "./src/cli.ts" },
+  "bin": { "raidr": "./src/cli.ts" },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "bun test",
@@ -368,7 +368,7 @@ Expected: FAIL — cannot resolve `../../fixtures/api/server`
     "fixtures:capture": "bun run scripts/captureFixture.ts"
   },
   "dependencies": {
-    "@sudobility/raider_lib": "file:../raider_lib",
+    "@sudobility/raidr_lib": "file:../raidr_lib",
     "fflate": "^0.8.2",
     "hono": "^4.6.0",
     "prettier": "^3.6.2"
@@ -384,7 +384,7 @@ Expected: FAIL — cannot resolve `../../fixtures/api/server`
 `bin` points at the TypeScript source: Bun executes it directly, so there is no
 build step to keep in sync.
 
-- [ ] **Step 4: Create `raider_cli/tsconfig.json`**
+- [ ] **Step 4: Create `raidr_cli/tsconfig.json`**
 
 ```json
 {
@@ -573,7 +573,7 @@ for (const app of APPS) {
 - [ ] **Step 9: Install, build, and verify**
 
 ```bash
-cd ~/projects/raider_cli && bun install && bun test && bun run fixtures:build
+cd ~/projects/raidr_cli && bun install && bun test && bun run fixtures:build
 ls fixtures/apps/react-sample/dist/assets/*.map | head
 ```
 Expected: 5 API tests PASS; both apps build; `.map` files present in both `dist/assets`
@@ -581,7 +581,7 @@ Expected: 5 API tests PASS; both apps build; `.map` files present in both `dist/
 - [ ] **Step 10: Commit**
 
 ```bash
-cd ~/projects/raider_cli
+cd ~/projects/raidr_cli
 git add -A && git commit -m "feat: fixture API and real React/Vue sample apps"
 ```
 
@@ -590,13 +590,13 @@ git add -A && git commit -m "feat: fixture API and real React/Vue sample apps"
 ### Task 21: Playwright CDP capture harness
 
 **Files:**
-- Create: `~/projects/raider_cli/scripts/captureFixture.ts`
-- Create: `~/projects/raider_cli/src/capture/harness.ts`
-- Test: `~/projects/raider_cli/tests/capture/harness.test.ts`
-- Produces: `~/projects/raider_cli/fixtures/bundles/react-sample.zip`, `vue-sample.zip`
+- Create: `~/projects/raidr_cli/scripts/captureFixture.ts`
+- Create: `~/projects/raidr_cli/src/capture/harness.ts`
+- Test: `~/projects/raidr_cli/tests/capture/harness.test.ts`
+- Produces: `~/projects/raidr_cli/fixtures/bundles/react-sample.zip`, `vue-sample.zip`
 
 **Interfaces:**
-- Consumes: `buildBundleFiles`, `zipBundle`, `MemoryContentStore`, `createPseudonymizer`, `redactRequest`, `createManifest` from `@sudobility/raider_lib`
+- Consumes: `buildBundleFiles`, `zipBundle`, `MemoryContentStore`, `createPseudonymizer`, `redactRequest`, `createManifest` from `@sudobility/raidr_lib`
 - Produces:
   - `captureApp(options: CaptureOptions): Promise<Uint8Array>` — returns the zipped bundle
   - `interface CaptureOptions { url: string; routes: string[]; outName: string }`
@@ -611,7 +611,7 @@ The harness mirrors the extension's pipeline exactly — same CDP domains, same
 // tests/capture/harness.test.ts
 import { expect, test } from 'bun:test';
 import { unzipSync, strFromU8 } from 'fflate';
-import { validateManifest, parseJsonl, type CapturedRequest } from '@sudobility/raider_lib';
+import { validateManifest, parseJsonl, type CapturedRequest } from '@sudobility/raidr_lib';
 import { captureApp } from '../../src/capture/harness';
 import { startFixtureApi } from '../../fixtures/api/server';
 
@@ -630,7 +630,7 @@ test(
       });
 
       const files = unzipSync(zipped);
-      const manifest = JSON.parse(strFromU8(files['raider.json']!));
+      const manifest = JSON.parse(strFromU8(files['raidr.json']!));
       expect(validateManifest(manifest).ok).toBe(true);
       expect(manifest.stack.framework).toBe('react');
       expect(manifest.stack.bundler).toBe('vite');
@@ -673,7 +673,7 @@ test(
         outName: 'vue-sample',
       });
       const files = unzipSync(zipped);
-      const manifest = JSON.parse(strFromU8(files['raider.json']!));
+      const manifest = JSON.parse(strFromU8(files['raidr.json']!));
       expect(manifest.stack.framework).toBe('vue');
     } finally {
       api.stop();
@@ -685,7 +685,7 @@ test(
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_cli && bun test tests/capture/harness.test.ts`
+Run: `cd ~/projects/raidr_cli && bun test tests/capture/harness.test.ts`
 Expected: FAIL — cannot resolve `../../src/capture/harness`
 
 - [ ] **Step 3: Write `src/capture/harness.ts`**
@@ -703,7 +703,7 @@ import {
   type CapturedRequest,
   type Gap,
   type StackFingerprint,
-} from '@sudobility/raider_lib';
+} from '@sudobility/raidr_lib';
 
 export interface CaptureOptions {
   /** Built app directory to serve statically. */
@@ -919,7 +919,7 @@ export { bundleFilename };
 - [ ] **Step 4: Share the probes**
 
 `harness.ts` imports `../introspect/probes`. Copy
-`raider_extension/src/introspect/probes.ts` to `raider_cli/src/introspect/probes.ts`
+`raidr_extension/src/introspect/probes.ts` to `raidr_cli/src/introspect/probes.ts`
 **unchanged**, and add a test asserting the two files are byte-identical:
 
 ```ts
@@ -929,7 +929,7 @@ import { expect, test } from 'bun:test';
 test('cli probes are identical to the extension probes', async () => {
   const cli = await Bun.file(`${import.meta.dir}/../../src/introspect/probes.ts`).text();
   const ext = await Bun.file(
-    `${import.meta.dir}/../../../raider_extension/src/introspect/probes.ts`
+    `${import.meta.dir}/../../../raidr_extension/src/introspect/probes.ts`
   ).text();
   expect(cli).toBe(ext);
 });
@@ -973,36 +973,36 @@ try {
 - [ ] **Step 6: Generate and commit the real bundles**
 
 ```bash
-cd ~/projects/raider_cli
+cd ~/projects/raidr_cli
 bunx playwright install chromium
 mkdir -p fixtures/bundles
 bun run fixtures:capture
 bun test
 unzip -l fixtures/bundles/react-sample.zip | head -20
 ```
-Expected: both bundles written; harness tests PASS; the listing shows `raider.json`, `network/requests.jsonl`, `content/*.js`, `sourcemaps/`
+Expected: both bundles written; harness tests PASS; the listing shows `raidr.json`, `network/requests.jsonl`, `content/*.js`, `sourcemaps/`
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd ~/projects/raider_cli
+cd ~/projects/raidr_cli
 git add -A && git commit -m "feat: Playwright CDP fixture harness and real captured bundles"
 ```
 
 ---
 # Milestone 6 — Analysis (stages 1–5)
 
-### Task 22: `raider_cli` scaffold and bundle loader
+### Task 22: `raidr_cli` scaffold and bundle loader
 
 **Files:**
-- Create: `~/projects/raider_cli/src/bundle/load.ts`
-- Create: `~/projects/raider_cli/src/cli.ts`
-- Test: `~/projects/raider_cli/tests/bundle/load.test.ts`
+- Create: `~/projects/raidr_cli/src/bundle/load.ts`
+- Create: `~/projects/raidr_cli/src/cli.ts`
+- Test: `~/projects/raidr_cli/tests/bundle/load.test.ts`
 
 **Interfaces:**
 - Produces:
   - `loadBundle(path: string): Promise<LoadedBundle>` — accepts a `.zip` or an unpacked directory
-  - `interface LoadedBundle { manifest: RaiderManifest; requests: CapturedRequest[]; frames: CapturedFrame[]; gaps: Gap[]; redaction: RedactionEntry[]; sourceMaps: Record<string,string>; runtime: RuntimeArtifacts; content: Map<string, Uint8Array>; text(hash: string): string | null; json(hash: string): unknown }`
+  - `interface LoadedBundle { manifest: RaidrManifest; requests: CapturedRequest[]; frames: CapturedFrame[]; gaps: Gap[]; redaction: RedactionEntry[]; sourceMaps: Record<string,string>; runtime: RuntimeArtifacts; content: Map<string, Uint8Array>; text(hash: string): string | null; json(hash: string): unknown }`
 
 Stage 1. Reads `gaps.json` first so every later stage knows what is missing.
 
@@ -1047,12 +1047,12 @@ test('exposes gaps so later stages can see what is missing', async () => {
 });
 ```
 
-Also create `tests/bundle/fixtures/badversion/raider.json` containing
+Also create `tests/bundle/fixtures/badversion/raidr.json` containing
 `{"formatVersion": 99, "sessionId": "x", "origin": "https://x", "startedAt": "", "counts": {}}`.
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_cli && bun test tests/bundle/load.test.ts`
+Run: `cd ~/projects/raidr_cli && bun test tests/bundle/load.test.ts`
 Expected: FAIL — cannot resolve `../../src/bundle/load`
 
 - [ ] **Step 3: Write `src/bundle/load.ts`**
@@ -1069,11 +1069,11 @@ import {
   type Gap,
   type RedactionEntry,
   type RuntimeArtifacts,
-  type RaiderManifest,
-} from '@sudobility/raider_lib';
+  type RaidrManifest,
+} from '@sudobility/raidr_lib';
 
 export interface LoadedBundle {
-  manifest: RaiderManifest;
+  manifest: RaidrManifest;
   requests: CapturedRequest[];
   frames: CapturedFrame[];
   gaps: Gap[];
@@ -1120,8 +1120,8 @@ export async function loadBundle(path: string): Promise<LoadedBundle> {
     return text === null ? fallback : (JSON.parse(text) as T);
   };
 
-  const manifestText = readText('raider.json');
-  if (manifestText === null) throw new Error(`${path}: raider.json not found`);
+  const manifestText = readText('raidr.json');
+  if (manifestText === null) throw new Error(`${path}: raidr.json not found`);
 
   const validation = validateManifest(JSON.parse(manifestText));
   if (!validation.ok) {
@@ -1185,7 +1185,7 @@ export async function loadBundle(path: string): Promise<LoadedBundle> {
 const [command] = process.argv.slice(2);
 
 if (command !== 'reconstruct') {
-  console.error('usage: raider reconstruct <bundle.zip|dir> --out <dir>');
+  console.error('usage: raidr reconstruct <bundle.zip|dir> --out <dir>');
   process.exit(1);
 }
 
@@ -1201,7 +1201,7 @@ which would break the verification gate on every task in between. Create
 - [ ] **Step 5: Verify and commit**
 
 ```bash
-cd ~/projects/raider_cli && bun test tests/bundle/load.test.ts && bun run typecheck
+cd ~/projects/raidr_cli && bun test tests/bundle/load.test.ts && bun run typecheck
 git add -A && git commit -m "feat: bundle loader reading zips and directories"
 ```
 
@@ -1210,9 +1210,9 @@ git add -A && git commit -m "feat: bundle loader reading zips and directories"
 ### Task 23: Source-map recovery
 
 **Files:**
-- Create: `~/projects/raider_lib/src/analysis/sourceMap.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/analysis/sourceMap.test.ts`
+- Create: `~/projects/raidr_lib/src/analysis/sourceMap.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/analysis/sourceMap.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -1295,7 +1295,7 @@ test('recovery ratio drives the recovery-mode decision', () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/analysis/sourceMap.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/analysis/sourceMap.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write `src/analysis/sourceMap.ts`**
@@ -1373,7 +1373,7 @@ export function recoveryRatio(input: {
 Add exports to `src/index.ts`, then:
 
 ```bash
-cd ~/projects/raider_lib && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_lib && bun test && bun run typecheck && bun run build
 git add -A && git commit -m "feat: source-map parsing and original-source recovery"
 ```
 
@@ -1382,8 +1382,8 @@ git add -A && git commit -m "feat: source-map parsing and original-source recove
 ### Task 24: Chunk beautification
 
 **Files:**
-- Create: `~/projects/raider_cli/src/stages/unpack.ts`
-- Test: `~/projects/raider_cli/tests/stages/unpack.test.ts`
+- Create: `~/projects/raidr_cli/src/stages/unpack.ts`
+- Test: `~/projects/raidr_cli/tests/stages/unpack.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -1436,7 +1436,7 @@ test('returns no modules for a flat rollup chunk', () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_cli && bun test tests/stages/unpack.test.ts`
+Run: `cd ~/projects/raidr_cli && bun test tests/stages/unpack.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write `src/stages/unpack.ts`**
@@ -1560,7 +1560,7 @@ export async function unpackChunks(bundle: LoadedBundle): Promise<UnpackedChunk[
 - [ ] **Step 4: Verify and commit**
 
 ```bash
-cd ~/projects/raider_cli && bun test && bun run typecheck
+cd ~/projects/raidr_cli && bun test && bun run typecheck
 git add -A && git commit -m "feat: chunk beautification and webpack module splitting"
 ```
 
@@ -1572,9 +1572,9 @@ The core algorithm of the whole analysis half. Everything typed downstream —
 the client, the types, the replay server — rests on this being right.
 
 **Files:**
-- Create: `~/projects/raider_lib/src/analysis/schema.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/analysis/schema.test.ts`
+- Create: `~/projects/raidr_lib/src/analysis/schema.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/analysis/schema.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -1693,7 +1693,7 @@ silently produces different types for the same endpoint on different runs.
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/analysis/schema.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/analysis/schema.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write `src/analysis/schema.ts`**
@@ -1870,7 +1870,7 @@ export function inferSchema(samples: unknown[]): JsonSchema {
 - [ ] **Step 4: Verify and commit**
 
 ```bash
-cd ~/projects/raider_lib && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_lib && bun test && bun run typecheck && bun run build
 git add -A && git commit -m "feat: JSON Schema inference by sample unification"
 ```
 
@@ -1879,9 +1879,9 @@ git add -A && git commit -m "feat: JSON Schema inference by sample unification"
 ### Task 26: API model
 
 **Files:**
-- Create: `~/projects/raider_lib/src/analysis/apiModel.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/analysis/apiModel.test.ts`
+- Create: `~/projects/raidr_lib/src/analysis/apiModel.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/analysis/apiModel.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -1991,7 +1991,7 @@ test('ignores samples whose body is not JSON', () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/analysis/apiModel.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/analysis/apiModel.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write `src/analysis/apiModel.ts`**
@@ -2113,7 +2113,7 @@ export function buildApiModel(samples: EndpointSample[]): ApiModel {
 - [ ] **Step 4: Verify and commit**
 
 ```bash
-cd ~/projects/raider_lib && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_lib && bun test && bun run typecheck && bun run build
 git add -A && git commit -m "feat: API model clustering endpoints with per-status schemas"
 ```
 
@@ -2122,9 +2122,9 @@ git add -A && git commit -m "feat: API model clustering endpoints with per-statu
 ### Task 27: Route model
 
 **Files:**
-- Create: `~/projects/raider_lib/src/analysis/routeModel.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`, `~/projects/raider_cli/src/capture/harness.ts`
-- Test: `~/projects/raider_lib/tests/analysis/routeModel.test.ts`
+- Create: `~/projects/raidr_lib/src/analysis/routeModel.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`, `~/projects/raidr_cli/src/capture/harness.ts`
+- Test: `~/projects/raidr_lib/tests/analysis/routeModel.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -2218,7 +2218,7 @@ test('static asset requests are not treated as endpoints', () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/analysis/routeModel.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/analysis/routeModel.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write `src/analysis/routeModel.ts`**
@@ -2308,7 +2308,7 @@ export function buildRouteModel(input: RouteModelInput): RouteModel {
 
 - [ ] **Step 4: Stamp navigation ids in the harness**
 
-In `raider_cli/src/capture/harness.ts`, add a counter and a navigations array:
+In `raidr_cli/src/capture/harness.ts`, add a counter and a navigations array:
 
 ```ts
   let navigationCounter = 0;
@@ -2327,7 +2327,7 @@ Set them inside the route loop, before `page.goto`:
 Change the row construction from `navigationId: null` to
 `navigationId: currentNavigationId`, and pass `navigations` through the bundle.
 
-In `raider_lib/src/bundle/assemble.ts`, add the field to `RuntimeArtifacts` and
+In `raidr_lib/src/bundle/assemble.ts`, add the field to `RuntimeArtifacts` and
 write the file:
 
 ```ts
@@ -2349,7 +2349,7 @@ and in `buildBundleFiles`, alongside the other runtime entries:
 
 Then add `navigations: []` to the extension's `SessionState.bundleInput()`
 runtime object and `navigations` to the harness's, so both producers satisfy the
-type. In `raider_cli/src/bundle/load.ts`, read it back:
+type. In `raidr_cli/src/bundle/load.ts`, read it back:
 
 ```ts
       navigations: readJson('runtime/navigations.json', []),
@@ -2358,31 +2358,31 @@ type. In `raider_cli/src/bundle/load.ts`, read it back:
 - [ ] **Step 5: Regenerate fixtures and verify**
 
 ```bash
-cd ~/projects/raider_lib && bun test && bun run build
-cd ~/projects/raider_cli && bun run fixtures:capture && bun test && bun run typecheck
+cd ~/projects/raidr_lib && bun test && bun run build
+cd ~/projects/raidr_cli && bun run fixtures:capture && bun test && bun run typecheck
 ```
 Expected: fixtures rebuilt with populated `navigationId`; all tests PASS
 
 - [ ] **Step 6: Commit both repos**
 
 ```bash
-cd ~/projects/raider_lib && git add -A && git commit -m "feat: route model joining router table to request timeline"
-cd ~/projects/raider_cli && git add -A && git commit -m "feat: stamp navigation ids during fixture capture"
+cd ~/projects/raidr_lib && git add -A && git commit -m "feat: route model joining router table to request timeline"
+cd ~/projects/raidr_cli && git add -A && git commit -m "feat: stamp navigation ids during fixture capture"
 ```
 
 ---
 # Milestone 7 — Codegen (stages 6–7)
 
-All generators are pure `(model) => string` functions in `raider_lib`. The CLI
+All generators are pure `(model) => string` functions in `raidr_lib`. The CLI
 writes their output to disk. Emitted source is formatted with Prettier by the
 CLI, so generators may emit readable-but-unformatted code.
 
 ### Task 28: TypeScript types from schemas
 
 **Files:**
-- Create: `~/projects/raider_lib/src/codegen/types.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/codegen/types.test.ts`
+- Create: `~/projects/raidr_lib/src/codegen/types.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/codegen/types.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -2464,7 +2464,7 @@ test('derives PascalCase names from method and template', () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/codegen/types.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/codegen/types.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write `src/codegen/types.ts`**
@@ -2547,7 +2547,7 @@ function pascal(input: string): string {
 - [ ] **Step 4: Verify and commit**
 
 ```bash
-cd ~/projects/raider_lib && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_lib && bun test && bun run typecheck && bun run build
 git add -A && git commit -m "feat: JSON Schema to TypeScript code generation"
 ```
 
@@ -2556,9 +2556,9 @@ git add -A && git commit -m "feat: JSON Schema to TypeScript code generation"
 ### Task 29: Typed API client generation
 
 **Files:**
-- Create: `~/projects/raider_lib/src/codegen/client.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/codegen/client.test.ts`
+- Create: `~/projects/raidr_lib/src/codegen/client.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/codegen/client.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -2706,7 +2706,7 @@ NetworkClient pattern and makes the generated client unit-testable.
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/codegen/client.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/codegen/client.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write `src/codegen/client.ts`**
@@ -2733,7 +2733,7 @@ function successResponse(endpoint: EndpointModel) {
 
 export function generateTypes(model: ApiModel): string {
   const lines = [
-    '// Generated by raider. Types inferred from observed traffic.',
+    '// Generated by raidr. Types inferred from observed traffic.',
     '',
   ];
 
@@ -2816,7 +2816,7 @@ export function generateClient(model: ApiModel): string {
           .join('\n')}\n} from './types';\n\n`
       : '';
 
-  return `// Generated by raider. One method per observed endpoint.
+  return `// Generated by raidr. One method per observed endpoint.
 ${imports}export type FetchFn = (
   input: string,
   init?: { method?: string; headers?: Record<string, string>; body?: string }
@@ -2842,7 +2842,7 @@ ${methods.join('\n\n')}
 - [ ] **Step 4: Verify and commit**
 
 ```bash
-cd ~/projects/raider_lib && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_lib && bun test && bun run typecheck && bun run build
 git add -A && git commit -m "feat: typed API client and type declaration generation"
 ```
 
@@ -2851,9 +2851,9 @@ git add -A && git commit -m "feat: typed API client and type declaration generat
 ### Task 30: Replay server generation
 
 **Files:**
-- Create: `~/projects/raider_lib/src/codegen/replay.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/codegen/replay.test.ts`
+- Create: `~/projects/raidr_lib/src/codegen/replay.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/codegen/replay.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -2886,7 +2886,7 @@ const MODEL: ApiModel = {
   ],
 };
 
-test('converts raider templates to hono path params', () => {
+test('converts raidr templates to hono path params', () => {
   expect(templateToHonoPath('/api/users/{id}')).toBe('/api/users/:id');
   expect(templateToHonoPath('/api/a/{x}/b/{y}')).toBe('/api/a/:x/b/:y');
   expect(templateToHonoPath('/api/users')).toBe('/api/users');
@@ -2906,7 +2906,7 @@ test('serves recorded bodies rather than fabricated ones', () => {
 test('returns 501 with an explicit marker when no recording exists', () => {
   const out = generateReplayServer(MODEL);
   expect(out).toContain('501');
-  expect(out).toContain('RAIDER-GAP');
+  expect(out).toContain('RAIDR-GAP');
 });
 
 test('serves the built app with SPA fallback so deep links resolve', () => {
@@ -2920,7 +2920,7 @@ no captured response must fail loudly, never return plausible invented data.
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/codegen/replay.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/codegen/replay.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write `src/codegen/replay.ts`**
@@ -2941,7 +2941,7 @@ export function generateReplayServer(model: ApiModel): string {
     })
     .join('\n');
 
-  return `// Generated by raider. Replays responses captured from the original app.
+  return `// Generated by raidr. Replays responses captured from the original app.
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
 import type { Context } from 'hono';
@@ -2954,10 +2954,10 @@ const app = new Hono();
 function respond(c: Context, key: string) {
   const recorded = (recordings as Record<string, Recording[]>)[key];
   if (!recorded || recorded.length === 0) {
-    // RAIDER-GAP: no response was captured for this endpoint. Failing loudly is
+    // RAIDR-GAP: no response was captured for this endpoint. Failing loudly is
     // deliberate — inventing one would make the reconstruction quietly wrong.
     return c.json(
-      { error: 'RAIDER-GAP', detail: \`no captured response for \${key}\` },
+      { error: 'RAIDR-GAP', detail: \`no captured response for \${key}\` },
       501
     );
   }
@@ -2980,7 +2980,7 @@ export default { port, fetch: app.fetch };
 - [ ] **Step 4: Verify and commit**
 
 ```bash
-cd ~/projects/raider_lib && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_lib && bun test && bun run typecheck && bun run build
 git add -A && git commit -m "feat: Hono replay server generation"
 ```
 
@@ -2989,9 +2989,9 @@ git add -A && git commit -m "feat: Hono replay server generation"
 ### Task 31: Project scaffold generation
 
 **Files:**
-- Create: `~/projects/raider_lib/src/codegen/project.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/codegen/project.test.ts`
+- Create: `~/projects/raidr_lib/src/codegen/project.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/codegen/project.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -3073,14 +3073,14 @@ test('lazy routes are emitted as dynamic imports', () => {
   expect(router).toContain('lazy(');
 });
 
-test('a page whose route was never visited carries an RAIDER-GAP marker', () => {
+test('a page whose route was never visited carries an RAIDR-GAP marker', () => {
   const files = generateProject({
     ...BASE,
     routes: [
       { path: '/admin', params: [], visited: false, endpoints: [], lazy: true },
     ],
   });
-  expect(files['src/pages/Admin.tsx']).toContain('RAIDER-GAP');
+  expect(files['src/pages/Admin.tsx']).toContain('RAIDR-GAP');
   expect(files['src/pages/Admin.tsx']).toContain('never visited');
 });
 
@@ -3119,14 +3119,14 @@ test('gaps from the capture are recorded in the project README', () => {
       },
     ],
   });
-  expect(files['RAIDER-GAPS.md']).toContain('chunk-47.js');
-  expect(files['RAIDER-GAPS.md']).toContain('body-evicted');
+  expect(files['RAIDR-GAPS.md']).toContain('chunk-47.js');
+  expect(files['RAIDR-GAPS.md']).toContain('body-evicted');
 });
 ```
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/codegen/project.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/codegen/project.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write `src/codegen/project.ts`**
@@ -3202,7 +3202,7 @@ function pageHeader(route: ProjectInput['routes'][number]): string {
   if (!route.visited) {
     lines.push(
       ' *',
-      ' * RAIDER-GAP: this route was never visited during capture; there is no',
+      ' * RAIDR-GAP: this route was never visited during capture; there is no',
       ' * runtime evidence for its content. Only the router shell is reproduced.'
     );
   }
@@ -3395,7 +3395,7 @@ createRoot(container).render(<RouterProvider router={router} />);
   }
 
   if (input.gaps.length > 0) {
-    files['RAIDER-GAPS.md'] = [
+    files['RAIDR-GAPS.md'] = [
       '# Capture gaps',
       '',
       'These resources were requested by the original app but not captured.',
@@ -3414,7 +3414,7 @@ createRoot(container).render(<RouterProvider router={router} />);
 - [ ] **Step 4: Verify and commit**
 
 ```bash
-cd ~/projects/raider_lib && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_lib && bun test && bun run typecheck && bun run build
 git add -A && git commit -m "feat: project scaffold generation with gap markers"
 ```
 
@@ -3424,9 +3424,9 @@ git add -A && git commit -m "feat: project scaffold generation with gap markers"
 ### Task 32: The `reconstruct` command
 
 **Files:**
-- Create: `~/projects/raider_cli/src/commands/reconstruct.ts`
-- Create: `~/projects/raider_cli/src/emit.ts`
-- Test: `~/projects/raider_cli/tests/commands/reconstruct.test.ts`
+- Create: `~/projects/raidr_cli/src/commands/reconstruct.ts`
+- Create: `~/projects/raidr_cli/src/emit.ts`
+- Test: `~/projects/raidr_cli/tests/commands/reconstruct.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -3434,14 +3434,14 @@ git add -A && git commit -m "feat: project scaffold generation with gap markers"
   - `reconstruct(options: { bundlePath: string; outDir: string }): Promise<ReconstructReport>`
   - `interface ReconstructReport { recoveryRatio: number; mode: 'recovery' | 'inference'; routes: number; endpoints: number; gaps: number; filesWritten: number }`
 
-Every stage writes its artifact under `<out>/.raider/` before the next runs, so a
+Every stage writes its artifact under `<out>/.raidr/` before the next runs, so a
 stage can be re-run or inspected in isolation — and so the skill has structured
 input rather than having to re-derive anything.
 
 **Artifact layout:**
 
 ```
-<out>/.raider/
+<out>/.raidr/
   01-bundle.json        manifest, counts, gap list
   02-recovery.json      recovery ratio, per-chunk map status
   02-sources/           recovered original files (recovery mode only)
@@ -3485,12 +3485,12 @@ test('chooses recovery mode when the app shipped source maps', async () => {
 test('writes every stage artifact', async () => {
   await run();
   for (const path of [
-    '.raider/01-bundle.json',
-    '.raider/02-recovery.json',
-    '.raider/04-api-model.json',
-    '.raider/05-route-model.json',
-    '.raider/recordings.json',
-    '.raider/report.md',
+    '.raidr/01-bundle.json',
+    '.raidr/02-recovery.json',
+    '.raidr/04-api-model.json',
+    '.raidr/05-route-model.json',
+    '.raidr/recordings.json',
+    '.raidr/report.md',
   ]) {
     expect(await Bun.file(`${OUT}/${path}`).exists()).toBe(true);
   }
@@ -3498,7 +3498,7 @@ test('writes every stage artifact', async () => {
 
 test('the api model contains the endpoints the fixture app called', async () => {
   await run();
-  const model = JSON.parse(await readFile(`${OUT}/.raider/04-api-model.json`, 'utf8'));
+  const model = JSON.parse(await readFile(`${OUT}/.raidr/04-api-model.json`, 'utf8'));
   const templates = model.endpoints.map((e: { template: string }) => e.template);
   expect(templates).toContain('/api/users');
   expect(templates).toContain('/api/users/{id}');
@@ -3506,7 +3506,7 @@ test('the api model contains the endpoints the fixture app called', async () => 
 
 test('recovers original source files rather than minified chunks', async () => {
   await run();
-  const recovery = JSON.parse(await readFile(`${OUT}/.raider/02-recovery.json`, 'utf8'));
+  const recovery = JSON.parse(await readFile(`${OUT}/.raidr/02-recovery.json`, 'utf8'));
   expect(recovery.files.length).toBeGreaterThan(0);
   expect(recovery.files.some((f: string) => f.endsWith('.tsx'))).toBe(true);
 });
@@ -3520,7 +3520,7 @@ test('generates a project that has the expected shape', async () => {
 
 test('recordings are keyed by endpoint and hold real captured bodies', async () => {
   await run();
-  const recordings = JSON.parse(await readFile(`${OUT}/.raider/recordings.json`, 'utf8'));
+  const recordings = JSON.parse(await readFile(`${OUT}/.raidr/recordings.json`, 'utf8'));
   const users = recordings['GET /api/users'];
   expect(users[0].status).toBe(200);
   expect(users[0].body.users.length).toBeGreaterThan(0);
@@ -3535,7 +3535,7 @@ test('refuses a bundle from an unsupported format version', async () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_cli && bun test tests/commands/reconstruct.test.ts`
+Run: `cd ~/projects/raidr_cli && bun test tests/commands/reconstruct.test.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Write `src/emit.ts`**
@@ -3589,7 +3589,7 @@ import {
   recoveryRatio,
   type EndpointSample,
   type StackFingerprint,
-} from '@sudobility/raider_lib';
+} from '@sudobility/raidr_lib';
 import { loadBundle } from '../bundle/load';
 import { unpackChunks } from '../stages/unpack';
 import { emitFiles } from '../emit';
@@ -3619,11 +3619,11 @@ export async function reconstruct(options: {
   outDir: string;
 }): Promise<ReconstructReport> {
   const bundle = await loadBundle(options.bundlePath);
-  const raiderDir = join(options.outDir, '.raider');
-  await mkdir(raiderDir, { recursive: true });
+  const raidrDir = join(options.outDir, '.raidr');
+  await mkdir(raidrDir, { recursive: true });
 
   const writeJson = (name: string, value: unknown) =>
-    writeFile(join(raiderDir, name), JSON.stringify(value, null, 2), 'utf8');
+    writeFile(join(raidrDir, name), JSON.stringify(value, null, 2), 'utf8');
 
   // Stage 1 — bundle summary, gaps first.
   await writeJson('01-bundle.json', {
@@ -3660,7 +3660,7 @@ export async function reconstruct(options: {
     files: Object.keys(recovered).sort(),
   });
   if (Object.keys(recovered).length > 0) {
-    await emitFiles(join(raiderDir, '02-sources'), recovered);
+    await emitFiles(join(raidrDir, '02-sources'), recovered);
   }
 
   // Stage 3 — unpack only when recovery did not carry the day.
@@ -3673,7 +3673,7 @@ export async function reconstruct(options: {
         files[`chunk-${index}/module-${module.id}.js`] = module.source;
       }
     });
-    await emitFiles(join(raiderDir, '03-chunks'), files);
+    await emitFiles(join(raidrDir, '03-chunks'), files);
   }
 
   // Stage 4 — API model, plus the recordings the replay server serves.
@@ -3759,9 +3759,9 @@ export async function reconstruct(options: {
   };
 
   await writeFile(
-    join(raiderDir, 'report.md'),
+    join(raidrDir, 'report.md'),
     [
-      `# raider reconstruction report`,
+      `# raidr reconstruction report`,
       ``,
       `- Origin: ${bundle.manifest.origin}`,
       `- Framework: ${stack.framework} ${stack.frameworkVersion ?? '(version unknown)'}`,
@@ -3798,21 +3798,21 @@ export async function runReconstruct(argv: string[]): Promise<void> {
   const outDir = outIndex >= 0 ? argv[outIndex + 1] : undefined;
 
   if (!bundlePath || !outDir) {
-    console.error('usage: raider reconstruct <bundle.zip|dir> --out <dir>');
+    console.error('usage: raidr reconstruct <bundle.zip|dir> --out <dir>');
     process.exit(1);
   }
 
   const report = await reconstruct({ bundlePath, outDir });
   console.log(JSON.stringify(report, null, 2));
-  console.log(`\nArtifacts: ${join(outDir, '.raider')}`);
-  console.log(`Report:    ${join(outDir, '.raider', 'report.md')}`);
+  console.log(`\nArtifacts: ${join(outDir, '.raidr')}`);
+  console.log(`Report:    ${join(outDir, '.raidr', 'report.md')}`);
 }
 ```
 
 - [ ] **Step 5: Verify and commit**
 
 ```bash
-cd ~/projects/raider_cli && bun test tests/commands/reconstruct.test.ts && bun run typecheck
+cd ~/projects/raidr_cli && bun test tests/commands/reconstruct.test.ts && bun run typecheck
 git add -A && git commit -m "feat: reconstruct command orchestrating all deterministic stages"
 ```
 
@@ -3821,9 +3821,9 @@ git add -A && git commit -m "feat: reconstruct command orchestrating all determi
 ### Task 33: The `reconstruct` skill
 
 **Files:**
-- Create: `~/projects/raider_cli/skills/reconstruct/SKILL.md`
-- Create: `~/projects/raider_cli/skills/reconstruct/INSTALL.md`
-- Test: `~/projects/raider_cli/tests/skills/skillFormat.test.ts`
+- Create: `~/projects/raidr_cli/skills/reconstruct/SKILL.md`
+- Create: `~/projects/raidr_cli/skills/reconstruct/INSTALL.md`
+- Test: `~/projects/raidr_cli/tests/skills/skillFormat.test.ts`
 
 **Testing note:** `superpowers:writing-skills` prescribes subagent pressure
 scenarios. Subagent dispatch is unavailable here, so this skill is verified two
@@ -3880,13 +3880,13 @@ test('frontmatter stays within the 1024 character limit', async () => {
 
 test('the skill names the exact command it drives', async () => {
   const text = await Bun.file(SKILL).text();
-  expect(text).toContain('raider reconstruct');
+  expect(text).toContain('raidr reconstruct');
   expect(text).toContain('--out');
 });
 
 test('the skill carries the gap rule', async () => {
   const text = await Bun.file(SKILL).text();
-  expect(text).toContain('RAIDER-GAP');
+  expect(text).toContain('RAIDR-GAP');
 });
 
 test('installation instructions cover both install paths', async () => {
@@ -3900,24 +3900,24 @@ test('installation instructions cover both install paths', async () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd ~/projects/raider_cli && bun test tests/skills/skillFormat.test.ts`
+Run: `cd ~/projects/raidr_cli && bun test tests/skills/skillFormat.test.ts`
 Expected: FAIL — SKILL.md does not exist
 
 - [ ] **Step 3: Write `skills/reconstruct/SKILL.md`**
 
 ```markdown
 ---
-name: raider-reconstruct
-description: Use when rebuilding a web application from an raider capture bundle, when handed an raider-*.zip of captured traffic, or when asked to reverse engineer a site from its recorded network activity and JavaScript.
+name: raidr-reconstruct
+description: Use when rebuilding a web application from an raidr capture bundle, when handed an raidr-*.zip of captured traffic, or when asked to reverse engineer a site from its recorded network activity and JavaScript.
 ---
 
-# Reconstructing an app from an raider bundle
+# Reconstructing an app from an raidr bundle
 
 ## Overview
 
-An raider bundle holds everything a running web app served: its JavaScript, its
+An raidr bundle holds everything a running web app served: its JavaScript, its
 HTML, its API traffic, its source maps where they existed, and an explicit list
-of what the capture missed. The `raider` CLI performs every deterministic stage.
+of what the capture missed. The `raidr` CLI performs every deterministic stage.
 Your job is the part it cannot do — turning recovered or minified source into
 readable components wired to real routes.
 
@@ -3926,7 +3926,7 @@ write must trace to something in it. Where the bundle is silent, say so.
 
 ## When to Use
 
-- A `.zip` produced by the raider capture extension, or an unpacked bundle directory
+- A `.zip` produced by the raidr capture extension, or an unpacked bundle directory
 - A request to rebuild, clone, or reverse engineer an app from captured traffic
 - Re-running a reconstruction with better judgment against an existing bundle
 
@@ -3938,14 +3938,14 @@ Not for: capturing traffic (that is the extension), or analyzing a HAR file
 **1. Run the CLI first. Always.**
 
 ```bash
-raider reconstruct <bundle.zip> --out <dir>
+raidr reconstruct <bundle.zip> --out <dir>
 ```
 
-It writes the project and, under `<dir>/.raider/`, the artifacts you work from.
+It writes the project and, under `<dir>/.raidr/`, the artifacts you work from.
 Do not read the raw bundle before running it — the artifacts are the same data,
 already clustered, typed, and de-duplicated.
 
-**2. Read `<dir>/.raider/report.md`.**
+**2. Read `<dir>/.raidr/report.md`.**
 
 It tells you the framework, the reconstruction mode, the routes (including which
 were never visited), the endpoints, and the gap count. Everything you do next
@@ -3953,12 +3953,12 @@ depends on the mode:
 
 | Mode | Meaning | What you do |
 |---|---|---|
-| `recovery` | Source maps covered ≥80% of the JS | Copy real original sources from `.raider/02-sources/` into the project. This is recovery, not inference — do not paraphrase them. |
-| `inference` | Little or no source-map coverage | Read `.raider/03-chunks/` and write components that reproduce observed behavior. |
+| `recovery` | Source maps covered ≥80% of the JS | Copy real original sources from `.raidr/02-sources/` into the project. This is recovery, not inference — do not paraphrase them. |
+| `inference` | Little or no source-map coverage | Read `.raidr/03-chunks/` and write components that reproduce observed behavior. |
 
 **3. Implement one route at a time.**
 
-For each route in `.raider/05-route-model.json`, work through it alone rather than
+For each route in `.raidr/05-route-model.json`, work through it alone rather than
 holding the whole app in context. The route entry names the endpoints that fired
 while it was mounted — those, and only those, are its data dependencies. Call
 them through the generated client in `src/api/client.ts`; never re-derive fetch
@@ -3966,9 +3966,9 @@ calls by hand, and never invent an endpoint the model does not list.
 
 **4. Honor the gaps.**
 
-`.raider/01-bundle.json` lists what the capture missed, and `RAIDER-GAPS.md` in the
+`.raidr/01-bundle.json` lists what the capture missed, and `RAIDR-GAPS.md` in the
 project repeats it. A route marked `visited: false` has no runtime evidence
-behind it. Leave its `RAIDER-GAP` comment in place and implement only the shell
+behind it. Leave its `RAIDR-GAP` comment in place and implement only the shell
 the router requires. Deleting a gap marker because the page looks empty without
 it is the one thing that turns a reconstruction into a fabrication.
 
@@ -3986,12 +3986,12 @@ not your expectation of it.
 
 | Artifact | Holds |
 |---|---|
-| `.raider/report.md` | Start here: mode, routes, endpoints, gaps |
-| `.raider/02-sources/` | Recovered original files (recovery mode) |
-| `.raider/03-chunks/` | Beautified chunks (inference mode) |
-| `.raider/04-api-model.json` | Endpoints, per-status schemas, auth style |
-| `.raider/05-route-model.json` | Routes, params, visited flag, endpoints per route |
-| `.raider/recordings.json` | Real captured responses the replay server serves |
+| `.raidr/report.md` | Start here: mode, routes, endpoints, gaps |
+| `.raidr/02-sources/` | Recovered original files (recovery mode) |
+| `.raidr/03-chunks/` | Beautified chunks (inference mode) |
+| `.raidr/04-api-model.json` | Endpoints, per-status schemas, auth style |
+| `.raidr/05-route-model.json` | Routes, params, visited flag, endpoints per route |
+| `.raidr/recordings.json` | Real captured responses the replay server serves |
 
 ## Common Mistakes
 
@@ -3999,7 +3999,7 @@ not your expectation of it.
 |---|---|
 | Reading the raw zip instead of running the CLI | The artifacts are the same data, already analyzed. Re-deriving them wastes context and produces worse results. |
 | Writing an endpoint absent from the API model | Endpoints come from observed traffic. One that is not in the model was never called; you are inventing an API. |
-| Filling in a never-visited route with plausible content | There is no evidence for it. The `RAIDER-GAP` marker is the honest output. |
+| Filling in a never-visited route with plausible content | There is no evidence for it. The `RAIDR-GAP` marker is the honest output. |
 | Hand-writing `fetch` calls | The generated client is typed from real payloads. Bypassing it discards the schema work. |
 | Reporting success without building | Generated code that typechecks in your head is not a deliverable. |
 | Treating a redaction placeholder as a real value | `<JWT:a1b2>` marks where a credential was. The same placeholder in two places means it was the same credential — that is the auth flow, not a literal. |
@@ -4008,31 +4008,31 @@ not your expectation of it.
 - [ ] **Step 4: Write `skills/reconstruct/INSTALL.md`**
 
 ```markdown
-# Installing the raider reconstruct skill
+# Installing the raidr reconstruct skill
 
-The skill drives the `raider` CLI, so install both.
+The skill drives the `raidr` CLI, so install both.
 
 ## 1. Install the CLI
 
 From a clone of this repository:
 
 ```bash
-cd ~/projects/raider_lib && bun install && bun run build
-cd ~/projects/raider_cli && bun install
+cd ~/projects/raidr_lib && bun install && bun run build
+cd ~/projects/raidr_cli && bun install
 bun link
 ```
 
-`bun link` registers the `raider` binary globally. Verify:
+`bun link` registers the `raidr` binary globally. Verify:
 
 ```bash
-raider reconstruct --help
+raidr reconstruct --help
 ```
 
 If `bun link` is not on your PATH, invoke it directly instead — the skill works
-either way, but you must then substitute the full path wherever it says `raider`:
+either way, but you must then substitute the full path wherever it says `raidr`:
 
 ```bash
-bun ~/projects/raider_cli/src/cli.ts reconstruct <bundle.zip> --out <dir>
+bun ~/projects/raidr_cli/src/cli.ts reconstruct <bundle.zip> --out <dir>
 ```
 
 ## 2. Install the skill
@@ -4042,23 +4042,23 @@ than copy, so the skill tracks the repository:
 
 ```bash
 mkdir -p ~/.claude/skills
-ln -s ~/projects/raider_cli/skills/reconstruct ~/.claude/skills/raider-reconstruct
+ln -s ~/projects/raidr_cli/skills/reconstruct ~/.claude/skills/raidr-reconstruct
 ```
 
 Verify it is discovered:
 
 ```bash
-ls ~/.claude/skills/raider-reconstruct/SKILL.md
+ls ~/.claude/skills/raidr-reconstruct/SKILL.md
 ```
 
 Then start a new Claude Code session — skills are read at session start. Ask it
-to reconstruct a bundle, or invoke it by name with `/raider-reconstruct`.
+to reconstruct a bundle, or invoke it by name with `/raidr-reconstruct`.
 
 ## 3. Confirm end to end
 
 ```bash
-raider reconstruct ~/projects/raider_cli/fixtures/bundles/react-sample.zip --out /tmp/rebuilt
-cat /tmp/rebuilt/.raider/report.md
+raidr reconstruct ~/projects/raidr_cli/fixtures/bundles/react-sample.zip --out /tmp/rebuilt
+cat /tmp/rebuilt/.raidr/report.md
 ```
 
 Expected: a report naming `react`, mode `recovery`, four routes, and the
@@ -4067,15 +4067,15 @@ Expected: a report naming `react`, mode `recovery`, four routes, and the
 ## Uninstalling
 
 ```bash
-rm ~/.claude/skills/raider-reconstruct
-cd ~/projects/raider_cli && bun unlink
+rm ~/.claude/skills/raidr-reconstruct
+cd ~/projects/raidr_cli && bun unlink
 ```
 ```
 
 - [ ] **Step 5: Verify and commit**
 
 ```bash
-cd ~/projects/raider_cli && bun test tests/skills/skillFormat.test.ts
+cd ~/projects/raidr_cli && bun test tests/skills/skillFormat.test.ts
 git add -A && git commit -m "feat: reconstruct skill and installation instructions"
 ```
 
@@ -4086,7 +4086,7 @@ git add -A && git commit -m "feat: reconstruct skill and installation instructio
 The test that proves the product: capture → reconstruct → build → serve.
 
 **Files:**
-- Test: `~/projects/raider_cli/tests/roundTrip.test.ts`
+- Test: `~/projects/raidr_cli/tests/roundTrip.test.ts`
 - Modify: whatever the round-trip exposes as broken
 
 - [ ] **Step 1: Write the failing test**
@@ -4205,7 +4205,7 @@ test(
 
 - [ ] **Step 2: Run and fix what it exposes**
 
-Run: `cd ~/projects/raider_cli && bun test tests/roundTrip.test.ts`
+Run: `cd ~/projects/raidr_cli && bun test tests/roundTrip.test.ts`
 
 This test will fail the first several times. Each failure is a real defect in a
 generator — a missing dependency in the emitted `package.json`, an import that
@@ -4218,15 +4218,15 @@ Iterate until all four pass.
 - [ ] **Step 3: Full verification across all three repos**
 
 ```bash
-cd ~/projects/raider_lib && bun test && bun run typecheck && bun run build
-cd ~/projects/raider_extension && bun test && bun run typecheck && bun run build
-cd ~/projects/raider_cli && bun test && bun run typecheck
+cd ~/projects/raidr_lib && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_extension && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_cli && bun test && bun run typecheck
 ```
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd ~/projects/raider_cli && git add -A && git commit -m "test: round-trip capture to buildable reconstruction"
+cd ~/projects/raidr_cli && git add -A && git commit -m "test: round-trip capture to buildable reconstruction"
 ```
 
 ---
@@ -4236,9 +4236,9 @@ cd ~/projects/raider_cli && git add -A && git commit -m "test: round-trip captur
 - `bun test` green in all three repos.
 - `bun run typecheck` clean in all three repos.
 - Fixture bundles are real captures produced by Playwright CDP, committed.
-- `raider reconstruct` on the React fixture selects recovery mode and emits recovered `.tsx` sources.
+- `raidr reconstruct` on the React fixture selects recovery mode and emits recovered `.tsx` sources.
 - The reconstructed React project installs, typechecks, and builds.
-- The replay server serves recorded endpoints and returns 501 with an `RAIDER-GAP` marker for uncaptured ones.
+- The replay server serves recorded endpoints and returns 501 with an `RAIDR-GAP` marker for uncaptured ones.
 - The Vue fixture reconstructs and builds.
 - `SKILL.md` passes its format test; `INSTALL.md` covers CLI and skill installation.
 

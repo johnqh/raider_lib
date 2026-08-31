@@ -17,7 +17,7 @@ const MODEL: ApiModel = {
   ],
 };
 
-test('converts raider templates to hono path params', () => {
+test('converts raidr templates to hono path params', () => {
   expect(templateToHonoPath('/api/users/{id}')).toBe('/api/users/:id');
   expect(templateToHonoPath('/api/a/{x}/b/{y}')).toBe('/api/a/:x/b/:y');
   expect(templateToHonoPath('/api/users')).toBe('/api/users');
@@ -36,7 +36,7 @@ test('serves recorded bodies rather than fabricated ones', () => {
 test('returns 501 with an explicit marker when no recording exists', () => {
   const out = generateReplayServer(MODEL);
   expect(out).toContain('501');
-  expect(out).toContain('RAIDER-GAP');
+  expect(out).toContain('RAIDR-GAP');
 });
 
 test('serves the built app with SPA fallback so deep links resolve', () => {

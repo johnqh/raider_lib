@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@sudobility/raider_lib",
+      "name": "@sudobility/raidr_lib",
       "dependencies": {
         "fflate": "^0.8.2",
       },

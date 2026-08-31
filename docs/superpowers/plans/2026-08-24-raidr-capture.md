@@ -1,23 +1,23 @@
-# raider Capture Extension Implementation Plan
+# raidr Capture Extension Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the raider capture extension — a Chrome MV3 extension that records a web app's complete network traffic and live runtime state, redacts secrets at capture time, tracks coverage, and exports a documented bundle.
+**Goal:** Build the raidr capture extension — a Chrome MV3 extension that records a web app's complete network traffic and live runtime state, redacts secrets at capture time, tracks coverage, and exports a documented bundle.
 
-**Architecture:** All pure logic (bundle types, redaction, path templating, coverage math) lives in `raider_lib`, a browser-free Bun/TypeScript package tested with `bun test`. The extension (`raider_extension`) is Chrome glue only: a service worker owning the `chrome.debugger` attachment, an offscreen document owning the IndexedDB capture buffer and zip export, and a React side panel. Chrome APIs sit behind an adapter interface so the glue is testable too.
+**Architecture:** All pure logic (bundle types, redaction, path templating, coverage math) lives in `raidr_lib`, a browser-free Bun/TypeScript package tested with `bun test`. The extension (`raidr_extension`) is Chrome glue only: a service worker owning the `chrome.debugger` attachment, an offscreen document owning the IndexedDB capture buffer and zip export, and a React side panel. Chrome APIs sit behind an adapter interface so the glue is testable too.
 
 **Tech Stack:** Bun, TypeScript 5.7+, Vite 5, `@crxjs/vite-plugin` 2.x, React 18, Tailwind 3, `fflate` (zip), Chrome DevTools Protocol 1.3, IndexedDB.
 
-**Spec:** `docs/superpowers/specs/2026-08-24-raider-design.md` (in `raider_lib`)
+**Spec:** `docs/superpowers/specs/2026-08-24-raidr-design.md` (in `raidr_lib`)
 
 **Scope:** Milestones 1–4 of the spec's build order. Milestones 5–8 (offline analysis, codegen, reconstruct skill) are a separate plan written later, against real captured bundles.
 
 ## Global Constraints
 
 - Package manager is **Bun**. Never npm, yarn, or pnpm.
-- `raider_lib` is published as `@sudobility/raider_lib`, license **BUSL-1.1**.
-- `raider_lib` contains **zero browser APIs** — no `chrome.*`, no `window`, no `indexedDB`, no `crypto.subtle`. It must run under `bun test` with no DOM.
-- `raider_extension` is `private: true`, not published.
+- `raidr_lib` is published as `@sudobility/raidr_lib`, license **BUSL-1.1**.
+- `raidr_lib` contains **zero browser APIs** — no `chrome.*`, no `window`, no `indexedDB`, no `crypto.subtle`. It must run under `bun test` with no DOM.
+- `raidr_extension` is `private: true`, not published.
 - Bundle `formatVersion` is `1` for all of milestones 1–4.
 - Redaction runs **before** anything reaches IndexedDB. Raw credentials are never at rest.
 - The pseudonym salt is generated per session and **never written to the bundle**.
@@ -29,13 +29,13 @@
 
 ## File Structure
 
-### `raider_lib`
+### `raidr_lib`
 
 | File | Responsibility |
 |---|---|
 | `src/bundle/types.ts` | Every bundle format type. The contract between capture and reconstruction. |
 | `src/bundle/paths.ts` | Bundle-relative path helpers (`contentPath`, `sourcemapPath`). |
-| `src/bundle/manifest.ts` | `RaiderManifest` construction and validation. |
+| `src/bundle/manifest.ts` | `RaidrManifest` construction and validation. |
 | `src/redaction/pseudonym.ts` | Stable pseudonym generator. |
 | `src/redaction/patterns.ts` | Key-name and value-shape detectors. |
 | `src/redaction/headers.ts` | Header redaction. |
@@ -46,7 +46,7 @@
 | `src/index.ts` | Public exports. |
 | `tests/fixtures/` | Fixture bundles for golden tests. |
 
-### `raider_extension`
+### `raidr_extension`
 
 | File | Responsibility |
 |---|---|
@@ -69,42 +69,42 @@
 
 # Milestone 1 — Bundle types and fixtures
 
-### Task 1: Scaffold `raider_lib`
+### Task 1: Scaffold `raidr_lib`
 
 **Files:**
-- Create: `~/projects/raider_lib/package.json`
-- Create: `~/projects/raider_lib/tsconfig.json`
-- Create: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/smoke.test.ts`
+- Create: `~/projects/raidr_lib/package.json`
+- Create: `~/projects/raidr_lib/tsconfig.json`
+- Create: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/smoke.test.ts`
 
 **Interfaces:**
 - Consumes: nothing
-- Produces: a `bun test` harness; `RAIDER_FORMAT_VERSION: 1` exported from `src/index.ts`
+- Produces: a `bun test` harness; `RAIDR_FORMAT_VERSION: 1` exported from `src/index.ts`
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 // tests/smoke.test.ts
 import { expect, test } from 'bun:test';
-import { RAIDER_FORMAT_VERSION } from '../src/index';
+import { RAIDR_FORMAT_VERSION } from '../src/index';
 
 test('exports the bundle format version', () => {
-  expect(RAIDER_FORMAT_VERSION).toBe(1);
+  expect(RAIDR_FORMAT_VERSION).toBe(1);
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test`
+Run: `cd ~/projects/raidr_lib && bun test`
 Expected: FAIL — cannot resolve `../src/index`
 
 - [ ] **Step 3: Create package.json**
 
 ```json
 {
-  "name": "@sudobility/raider_lib",
+  "name": "@sudobility/raidr_lib",
   "version": "0.0.1",
-  "description": "Bundle format, redaction, and analysis for raider web app capture",
+  "description": "Bundle format, redaction, and analysis for raidr web app capture",
   "license": "BUSL-1.1",
   "type": "module",
   "main": "./dist/index.js",
@@ -148,20 +148,20 @@ Note: `lib` deliberately omits `DOM`. This is the mechanical enforcement of the 
 - [ ] **Step 5: Create src/index.ts**
 
 ```ts
-export const RAIDER_FORMAT_VERSION = 1 as const;
+export const RAIDR_FORMAT_VERSION = 1 as const;
 ```
 
 - [ ] **Step 6: Install and run tests**
 
-Run: `cd ~/projects/raider_lib && bun install && bun test`
+Run: `cd ~/projects/raidr_lib && bun install && bun test`
 Expected: PASS, 1 test
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd ~/projects/raider_lib
+cd ~/projects/raidr_lib
 git add -A
-git commit -m "feat: scaffold raider_lib package"
+git commit -m "feat: scaffold raidr_lib package"
 ```
 
 ---
@@ -169,15 +169,15 @@ git commit -m "feat: scaffold raider_lib package"
 ### Task 2: Bundle format types and path helpers
 
 **Files:**
-- Create: `~/projects/raider_lib/src/bundle/types.ts`
-- Create: `~/projects/raider_lib/src/bundle/paths.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/bundle/paths.test.ts`
+- Create: `~/projects/raidr_lib/src/bundle/types.ts`
+- Create: `~/projects/raidr_lib/src/bundle/paths.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/bundle/paths.test.ts`
 
 **Interfaces:**
-- Consumes: `RAIDER_FORMAT_VERSION` from Task 1
+- Consumes: `RAIDR_FORMAT_VERSION` from Task 1
 - Produces:
-  - types `CapturedRequest`, `CapturedFrame`, `Gap`, `GapReason`, `RedactionKind`, `RedactionEntry`, `RaiderManifest`, `StackFingerprint`
+  - types `CapturedRequest`, `CapturedFrame`, `Gap`, `GapReason`, `RedactionKind`, `RedactionEntry`, `RaidrManifest`, `StackFingerprint`
   - `contentPath(hash: string, ext: string): string`
   - `sourcemapPath(hash: string): string`
   - `extensionForMime(mime: string | null): string`
@@ -218,7 +218,7 @@ test('strips mime parameters before matching', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/bundle/paths.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/bundle/paths.test.ts`
 Expected: FAIL — cannot resolve `../../src/bundle/paths`
 
 - [ ] **Step 3: Write src/bundle/types.ts**
@@ -297,7 +297,7 @@ export interface StackFingerprint {
   bundler: 'webpack' | 'vite' | 'unknown';
 }
 
-export interface RaiderManifest {
+export interface RaidrManifest {
   formatVersion: 1;
   sessionId: string;
   origin: string;
@@ -353,7 +353,7 @@ export function sourcemapPath(hash: string): string {
 - [ ] **Step 5: Re-export from src/index.ts**
 
 ```ts
-export const RAIDER_FORMAT_VERSION = 1 as const;
+export const RAIDR_FORMAT_VERSION = 1 as const;
 
 export type {
   CapturedRequest,
@@ -363,7 +363,7 @@ export type {
   RedactionEntry,
   RedactionKind,
   StackFingerprint,
-  RaiderManifest,
+  RaidrManifest,
 } from './bundle/types';
 
 export { contentPath, sourcemapPath, extensionForMime } from './bundle/paths';
@@ -371,13 +371,13 @@ export { contentPath, sourcemapPath, extensionForMime } from './bundle/paths';
 
 - [ ] **Step 6: Run tests and typecheck**
 
-Run: `cd ~/projects/raider_lib && bun test && bun run typecheck`
+Run: `cd ~/projects/raidr_lib && bun test && bun run typecheck`
 Expected: PASS, 6 tests; typecheck clean
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd ~/projects/raider_lib
+cd ~/projects/raidr_lib
 git add -A
 git commit -m "feat: bundle format types and path helpers"
 ```
@@ -387,18 +387,18 @@ git commit -m "feat: bundle format types and path helpers"
 ### Task 3: Manifest construction and fixture bundle
 
 **Files:**
-- Create: `~/projects/raider_lib/src/bundle/manifest.ts`
-- Create: `~/projects/raider_lib/tests/fixtures/minimal/raider.json`
-- Create: `~/projects/raider_lib/tests/fixtures/minimal/network/requests.jsonl`
-- Create: `~/projects/raider_lib/tests/fixtures/minimal/gaps.json`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/bundle/manifest.test.ts`
+- Create: `~/projects/raidr_lib/src/bundle/manifest.ts`
+- Create: `~/projects/raidr_lib/tests/fixtures/minimal/raidr.json`
+- Create: `~/projects/raidr_lib/tests/fixtures/minimal/network/requests.jsonl`
+- Create: `~/projects/raidr_lib/tests/fixtures/minimal/gaps.json`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/bundle/manifest.test.ts`
 
 **Interfaces:**
 - Consumes: types from Task 2
 - Produces:
-  - `createManifest(input: CreateManifestInput): RaiderManifest`
-  - `validateManifest(value: unknown): { ok: true; manifest: RaiderManifest } | { ok: false; errors: string[] }`
+  - `createManifest(input: CreateManifestInput): RaidrManifest`
+  - `validateManifest(value: unknown): { ok: true; manifest: RaidrManifest } | { ok: false; errors: string[] }`
   - `parseJsonl<T>(text: string): T[]`
   - `toJsonl(rows: unknown[]): string`
 
@@ -455,7 +455,7 @@ test('parseJsonl ignores blank trailing lines', () => {
 });
 
 test('reads the committed minimal fixture bundle', async () => {
-  const manifestText = await Bun.file('tests/fixtures/minimal/raider.json').text();
+  const manifestText = await Bun.file('tests/fixtures/minimal/raidr.json').text();
   const result = validateManifest(JSON.parse(manifestText));
   expect(result.ok).toBe(true);
 
@@ -469,14 +469,14 @@ test('reads the committed minimal fixture bundle', async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/bundle/manifest.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/bundle/manifest.test.ts`
 Expected: FAIL — cannot resolve `../../src/bundle/manifest`
 
 - [ ] **Step 3: Write src/bundle/manifest.ts**
 
 ```ts
-import { RAIDER_FORMAT_VERSION } from '../index';
-import type { RaiderManifest } from './types';
+import { RAIDR_FORMAT_VERSION } from '../index';
+import type { RaidrManifest } from './types';
 
 export interface CreateManifestInput {
   sessionId: string;
@@ -484,9 +484,9 @@ export interface CreateManifestInput {
   startedAt: string;
 }
 
-export function createManifest(input: CreateManifestInput): RaiderManifest {
+export function createManifest(input: CreateManifestInput): RaidrManifest {
   return {
-    formatVersion: RAIDER_FORMAT_VERSION,
+    formatVersion: RAIDR_FORMAT_VERSION,
     sessionId: input.sessionId,
     origin: input.origin,
     startedAt: input.startedAt,
@@ -497,7 +497,7 @@ export function createManifest(input: CreateManifestInput): RaiderManifest {
 }
 
 export type ValidateResult =
-  | { ok: true; manifest: RaiderManifest }
+  | { ok: true; manifest: RaidrManifest }
   | { ok: false; errors: string[] };
 
 export function validateManifest(value: unknown): ValidateResult {
@@ -507,9 +507,9 @@ export function validateManifest(value: unknown): ValidateResult {
   }
   const v = value as Record<string, unknown>;
 
-  if (v.formatVersion !== RAIDER_FORMAT_VERSION) {
+  if (v.formatVersion !== RAIDR_FORMAT_VERSION) {
     errors.push(
-      `formatVersion must be ${RAIDER_FORMAT_VERSION}, got ${String(v.formatVersion)}`
+      `formatVersion must be ${RAIDR_FORMAT_VERSION}, got ${String(v.formatVersion)}`
     );
   }
   for (const key of ['sessionId', 'origin', 'startedAt'] as const) {
@@ -521,7 +521,7 @@ export function validateManifest(value: unknown): ValidateResult {
 
   return errors.length > 0
     ? { ok: false, errors }
-    : { ok: true, manifest: value as RaiderManifest };
+    : { ok: true, manifest: value as RaidrManifest };
 }
 
 export function toJsonl(rows: unknown[]): string {
@@ -538,7 +538,7 @@ export function parseJsonl<T>(text: string): T[] {
 
 - [ ] **Step 4: Create the fixture bundle**
 
-`tests/fixtures/minimal/raider.json`:
+`tests/fixtures/minimal/raidr.json`:
 
 ```json
 {
@@ -596,13 +596,13 @@ export type { CreateManifestInput, ValidateResult } from './bundle/manifest';
 
 - [ ] **Step 6: Run tests**
 
-Run: `cd ~/projects/raider_lib && bun test && bun run typecheck`
+Run: `cd ~/projects/raidr_lib && bun test && bun run typecheck`
 Expected: PASS, 13 tests total; typecheck clean
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd ~/projects/raider_lib
+cd ~/projects/raidr_lib
 git add -A
 git commit -m "feat: manifest construction, JSONL helpers, minimal fixture bundle"
 ```
@@ -610,59 +610,59 @@ git commit -m "feat: manifest construction, JSONL helpers, minimal fixture bundl
 ---
 # Milestone 2 — Capture core
 
-### Task 4: Scaffold `raider_extension` and the message protocol
+### Task 4: Scaffold `raidr_extension` and the message protocol
 
 **Files:**
-- Create: `~/projects/raider_extension/package.json`
-- Create: `~/projects/raider_extension/tsconfig.json`
-- Create: `~/projects/raider_extension/vite.config.ts`
-- Create: `~/projects/raider_extension/src/manifest.json`
-- Create: `~/projects/raider_extension/src/shared/messages.ts`
-- Create: `~/projects/raider_extension/src/background/index.ts`
-- Create: `~/projects/raider_extension/src/sidepanel/index.html`
-- Create: `~/projects/raider_extension/src/sidepanel/main.tsx`
-- Create: `~/projects/raider_extension/src/sidepanel/SidePanel.tsx`
-- Test: `~/projects/raider_extension/tests/messages.test.ts`
+- Create: `~/projects/raidr_extension/package.json`
+- Create: `~/projects/raidr_extension/tsconfig.json`
+- Create: `~/projects/raidr_extension/vite.config.ts`
+- Create: `~/projects/raidr_extension/src/manifest.json`
+- Create: `~/projects/raidr_extension/src/shared/messages.ts`
+- Create: `~/projects/raidr_extension/src/background/index.ts`
+- Create: `~/projects/raidr_extension/src/sidepanel/index.html`
+- Create: `~/projects/raidr_extension/src/sidepanel/main.tsx`
+- Create: `~/projects/raidr_extension/src/sidepanel/SidePanel.tsx`
+- Test: `~/projects/raidr_extension/tests/messages.test.ts`
 
 **Interfaces:**
-- Consumes: `@sudobility/raider_lib` types via a `file:` dependency (Bun's `link:` means a globally `bun link`-ed package, not a path)
+- Consumes: `@sudobility/raidr_lib` types via a `file:` dependency (Bun's `link:` means a globally `bun link`-ed package, not a path)
 - Produces:
-  - `type RaiderMessage` — discriminated union on `kind`
-  - `isRaiderMessage(value: unknown): value is RaiderMessage`
+  - `type RaidrMessage` — discriminated union on `kind`
+  - `isRaidrMessage(value: unknown): value is RaidrMessage`
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 // tests/messages.test.ts
 import { expect, test } from 'bun:test';
-import { isRaiderMessage } from '../src/shared/messages';
+import { isRaidrMessage } from '../src/shared/messages';
 
 test('accepts a known message kind', () => {
-  expect(isRaiderMessage({ kind: 'session/start', tabId: 7 })).toBe(true);
+  expect(isRaidrMessage({ kind: 'session/start', tabId: 7 })).toBe(true);
 });
 
 test('rejects an unknown kind', () => {
-  expect(isRaiderMessage({ kind: 'nope' })).toBe(false);
+  expect(isRaidrMessage({ kind: 'nope' })).toBe(false);
 });
 
 test('rejects non-objects', () => {
-  expect(isRaiderMessage(null)).toBe(false);
-  expect(isRaiderMessage('session/start')).toBe(false);
+  expect(isRaidrMessage(null)).toBe(false);
+  expect(isRaidrMessage('session/start')).toBe(false);
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_extension && bun test`
+Run: `cd ~/projects/raidr_extension && bun test`
 Expected: FAIL — cannot resolve `../src/shared/messages`
 
 - [ ] **Step 3: Create package.json**
 
 ```json
 {
-  "name": "raider_extension",
+  "name": "raidr_extension",
   "version": "0.0.1",
-  "description": "raider — capture a web app's traffic and runtime for reconstruction",
+  "description": "raidr — capture a web app's traffic and runtime for reconstruction",
   "private": true,
   "type": "module",
   "scripts": {
@@ -672,7 +672,7 @@ Expected: FAIL — cannot resolve `../src/shared/messages`
     "test": "bun test"
   },
   "dependencies": {
-    "@sudobility/raider_lib": "file:../raider_lib",
+    "@sudobility/raidr_lib": "file:../raidr_lib",
     "fflate": "^0.8.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
@@ -722,7 +722,7 @@ Expected: FAIL — cannot resolve `../src/shared/messages`
 ```json
 {
   "manifest_version": 3,
-  "name": "raider",
+  "name": "raidr",
   "version": "0.0.1",
   "description": "Capture a web app's traffic and runtime for reconstruction",
   "minimum_chrome_version": "116",
@@ -743,7 +743,7 @@ Expected: FAIL — cannot resolve `../src/shared/messages`
     "default_path": "src/sidepanel/index.html"
   },
   "action": {
-    "default_title": "raider"
+    "default_title": "raidr"
   },
   "content_security_policy": {
     "extension_pages": "default-src 'self'; script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'"
@@ -808,7 +808,7 @@ Note: the `offscreen` input is declared now so Task 7 only has to add the files,
 - [ ] **Step 7: Create src/shared/messages.ts**
 
 ```ts
-import type { Gap, RaiderManifest } from '@sudobility/raider_lib';
+import type { Gap, RaidrManifest } from '@sudobility/raidr_lib';
 
 export interface SessionStats {
   requests: number;
@@ -817,7 +817,7 @@ export interface SessionStats {
   gaps: number;
 }
 
-export type RaiderMessage =
+export type RaidrMessage =
   | { kind: 'session/start'; tabId: number }
   | { kind: 'session/stop' }
   | { kind: 'session/stats'; stats: SessionStats }
@@ -826,7 +826,7 @@ export type RaiderMessage =
   | { kind: 'capture/gap'; gap: Gap }
   | { kind: 'export/start' }
   | { kind: 'export/ready'; blobUrl: string; filename: string }
-  | { kind: 'export/manifest'; manifest: RaiderManifest };
+  | { kind: 'export/manifest'; manifest: RaidrManifest };
 
 const KINDS: ReadonlySet<string> = new Set([
   'session/start',
@@ -840,7 +840,7 @@ const KINDS: ReadonlySet<string> = new Set([
   'export/manifest',
 ]);
 
-export function isRaiderMessage(value: unknown): value is RaiderMessage {
+export function isRaidrMessage(value: unknown): value is RaidrMessage {
   if (typeof value !== 'object' || value === null) return false;
   const kind = (value as { kind?: unknown }).kind;
   return typeof kind === 'string' && KINDS.has(kind);
@@ -852,16 +852,16 @@ export function isRaiderMessage(value: unknown): value is RaiderMessage {
 `src/background/index.ts`:
 
 ```ts
-import { isRaiderMessage } from '@/shared/messages';
+import { isRaidrMessage } from '@/shared/messages';
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (!isRaiderMessage(message)) return;
-  console.debug('[raider] message', message.kind);
+  if (!isRaidrMessage(message)) return;
+  console.debug('[raidr] message', message.kind);
 });
 
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
-  .catch((error: unknown) => console.error('[raider] side panel', error));
+  .catch((error: unknown) => console.error('[raidr] side panel', error));
 ```
 
 `src/sidepanel/index.html`:
@@ -871,7 +871,7 @@ chrome.sidePanel
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>raider</title>
+    <title>raidr</title>
   </head>
   <body>
     <div id="root"></div>
@@ -895,7 +895,7 @@ createRoot(container).render(<SidePanel />);
 
 ```tsx
 export function SidePanel() {
-  return <main className="p-4 text-sm">raider</main>;
+  return <main className="p-4 text-sm">raidr</main>;
 }
 ```
 
@@ -903,22 +903,22 @@ export function SidePanel() {
 
 Run:
 ```bash
-cd ~/projects/raider_lib && bun run build
-cd ~/projects/raider_extension && bun install && bun test && bun run build
+cd ~/projects/raidr_lib && bun run build
+cd ~/projects/raidr_extension && bun install && bun test && bun run build
 ```
 Expected: 3 tests PASS; `dist/` produced with a valid `manifest.json`
 
 - [ ] **Step 10: Load in Chrome and verify**
 
-Open `chrome://extensions`, enable Developer mode, "Load unpacked", select `~/projects/raider_extension/dist`. Click the toolbar icon.
-Expected: side panel opens showing "raider", no console errors in the service worker.
+Open `chrome://extensions`, enable Developer mode, "Load unpacked", select `~/projects/raidr_extension/dist`. Click the toolbar icon.
+Expected: side panel opens showing "raidr", no console errors in the service worker.
 
 - [ ] **Step 11: Commit**
 
 ```bash
-cd ~/projects/raider_extension
+cd ~/projects/raidr_extension
 git init && git add -A
-git commit -m "feat: scaffold raider extension and typed message protocol"
+git commit -m "feat: scaffold raidr extension and typed message protocol"
 ```
 
 ---
@@ -926,9 +926,9 @@ git commit -m "feat: scaffold raider extension and typed message protocol"
 ### Task 5: Chrome adapter and its fake
 
 **Files:**
-- Create: `~/projects/raider_extension/src/adapters/ChromeAdapter.ts`
-- Create: `~/projects/raider_extension/tests/support/FakeChromeAdapter.ts`
-- Test: `~/projects/raider_extension/tests/adapters/fakeChromeAdapter.test.ts`
+- Create: `~/projects/raidr_extension/src/adapters/ChromeAdapter.ts`
+- Create: `~/projects/raidr_extension/tests/support/FakeChromeAdapter.ts`
+- Test: `~/projects/raidr_extension/tests/adapters/fakeChromeAdapter.test.ts`
 
 **Interfaces:**
 - Consumes: nothing
@@ -985,7 +985,7 @@ test('rejects when a command is configured to fail', async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_extension && bun test tests/adapters/fakeChromeAdapter.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/adapters/fakeChromeAdapter.test.ts`
 Expected: FAIL — cannot resolve `../support/FakeChromeAdapter`
 
 - [ ] **Step 3: Write src/adapters/ChromeAdapter.ts**
@@ -1112,13 +1112,13 @@ export class FakeChromeAdapter implements ChromeAdapter {
 
 - [ ] **Step 5: Run tests**
 
-Run: `cd ~/projects/raider_extension && bun test`
+Run: `cd ~/projects/raidr_extension && bun test`
 Expected: PASS, 7 tests total
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd ~/projects/raider_extension
+cd ~/projects/raidr_extension
 git add -A
 git commit -m "feat: chrome adapter interface with test fake"
 ```
@@ -1128,11 +1128,11 @@ git commit -m "feat: chrome adapter interface with test fake"
 ### Task 6: CDP request assembler
 
 **Files:**
-- Create: `~/projects/raider_extension/src/background/requestAssembler.ts`
-- Test: `~/projects/raider_extension/tests/background/requestAssembler.test.ts`
+- Create: `~/projects/raidr_extension/src/background/requestAssembler.ts`
+- Test: `~/projects/raidr_extension/tests/background/requestAssembler.test.ts`
 
 **Interfaces:**
-- Consumes: `CapturedRequest`, `Gap` from `@sudobility/raider_lib`
+- Consumes: `CapturedRequest`, `Gap` from `@sudobility/raidr_lib`
 - Produces:
   - `class RequestAssembler` with:
     - `onRequestWillBeSent(params: Record<string, unknown>): void`
@@ -1271,7 +1271,7 @@ test('marks cache hits so the exporter can skip refetching', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_extension && bun test tests/background/requestAssembler.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/background/requestAssembler.test.ts`
 Expected: FAIL — cannot resolve `../../src/background/requestAssembler`
 
 - [ ] **Step 3: Write src/background/requestAssembler.ts**
@@ -1279,7 +1279,7 @@ Expected: FAIL — cannot resolve `../../src/background/requestAssembler`
 Note the `requestBody` field: the assembler carries the raw body string, and the offscreen document hashes it into `requestBodyHash` after redaction. `AssembledRequest` is therefore `CapturedRequest` with the hash fields replaced by raw values.
 
 ```ts
-import type { CapturedRequest, Gap } from '@sudobility/raider_lib';
+import type { CapturedRequest, Gap } from '@sudobility/raidr_lib';
 
 export interface AssembledRequest
   extends Omit<CapturedRequest, 'requestBodyHash' | 'responseBodyHash'> {
@@ -1408,13 +1408,13 @@ export class RequestAssembler {
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd ~/projects/raider_extension && bun test && bun run typecheck`
+Run: `cd ~/projects/raidr_extension && bun test && bun run typecheck`
 Expected: PASS, 15 tests total; typecheck clean
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/projects/raider_extension
+cd ~/projects/raidr_extension
 git add -A
 git commit -m "feat: CDP request assembler with gap recording"
 ```
@@ -1424,10 +1424,10 @@ git commit -m "feat: CDP request assembler with gap recording"
 ### Task 7: Offscreen content-addressed store
 
 **Files:**
-- Create: `~/projects/raider_extension/src/offscreen/hash.ts`
-- Create: `~/projects/raider_extension/src/offscreen/store.ts`
-- Create: `~/projects/raider_extension/src/offscreen/index.html`
-- Test: `~/projects/raider_extension/tests/offscreen/store.test.ts`
+- Create: `~/projects/raidr_extension/src/offscreen/hash.ts`
+- Create: `~/projects/raidr_extension/src/offscreen/store.ts`
+- Create: `~/projects/raidr_extension/src/offscreen/index.html`
+- Test: `~/projects/raidr_extension/tests/offscreen/store.test.ts`
 
 **Interfaces:**
 - Consumes: nothing
@@ -1451,7 +1451,7 @@ const encoder = new TextEncoder();
 let dbCounter = 0;
 function freshStore() {
   dbCounter += 1;
-  return new IdbContentStore(`raider-test-${dbCounter}`, indexedDB);
+  return new IdbContentStore(`raidr-test-${dbCounter}`, indexedDB);
 }
 
 test('hashes bytes to stable lowercase hex', async () => {
@@ -1504,7 +1504,7 @@ test('has reports presence', async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_extension && bun test tests/offscreen/store.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/offscreen/store.test.ts`
 Expected: FAIL — cannot resolve `../../src/offscreen/hash`
 
 - [ ] **Step 3: Write src/offscreen/hash.ts**
@@ -1620,7 +1620,7 @@ export class IdbContentStore implements ContentStore {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>raider offscreen</title>
+    <title>raidr offscreen</title>
   </head>
   <body>
     <script type="module" src="./index.ts"></script>
@@ -1631,18 +1631,18 @@ export class IdbContentStore implements ContentStore {
 Also create a placeholder `src/offscreen/index.ts` so the Vite input resolves; Task 8 fills it in:
 
 ```ts
-console.debug('[raider] offscreen document ready');
+console.debug('[raidr] offscreen document ready');
 ```
 
 - [ ] **Step 6: Run tests**
 
-Run: `cd ~/projects/raider_extension && bun test && bun run typecheck`
+Run: `cd ~/projects/raidr_extension && bun test && bun run typecheck`
 Expected: PASS, 22 tests total; typecheck clean
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd ~/projects/raider_extension
+cd ~/projects/raidr_extension
 git add -A
 git commit -m "feat: content-addressed IndexedDB store for the offscreen buffer"
 ```
@@ -1652,13 +1652,13 @@ git commit -m "feat: content-addressed IndexedDB store for the offscreen buffer"
 ### Task 8: Bundle assembly and zip export
 
 **Files:**
-- Create: `~/projects/raider_extension/src/offscreen/exporter.ts`
-- Modify: `~/projects/raider_extension/src/offscreen/index.ts`
-- Modify: `~/projects/raider_extension/src/background/index.ts`
-- Test: `~/projects/raider_extension/tests/offscreen/exporter.test.ts`
+- Create: `~/projects/raidr_extension/src/offscreen/exporter.ts`
+- Modify: `~/projects/raidr_extension/src/offscreen/index.ts`
+- Modify: `~/projects/raidr_extension/src/background/index.ts`
+- Test: `~/projects/raidr_extension/tests/offscreen/exporter.test.ts`
 
 **Interfaces:**
-- Consumes: `contentPath`, `extensionForMime`, `toJsonl`, `createManifest` from `@sudobility/raider_lib`; `ContentStore` from Task 7
+- Consumes: `contentPath`, `extensionForMime`, `toJsonl`, `createManifest` from `@sudobility/raidr_lib`; `ContentStore` from Task 7
 - Produces:
   - `buildBundleFiles(input: BundleInput): Promise<Record<string, Uint8Array>>`
   - `zipBundle(files: Record<string, Uint8Array>): Promise<Uint8Array>`
@@ -1683,7 +1683,7 @@ import {
 const encoder = new TextEncoder();
 
 async function fixtureInput() {
-  const store = new IdbContentStore(`raider-export-${Math.random()}`, indexedDB);
+  const store = new IdbContentStore(`raidr-export-${Math.random()}`, indexedDB);
   const htmlHash = await store.put(encoder.encode('<html></html>'));
   return {
     store,
@@ -1745,7 +1745,7 @@ test('lays out every required bundle path', async () => {
   const files = await buildBundleFiles(input);
   const paths = Object.keys(files).sort();
 
-  expect(paths).toContain('raider.json');
+  expect(paths).toContain('raidr.json');
   expect(paths).toContain('network/requests.jsonl');
   expect(paths).toContain('network/websockets.jsonl');
   expect(paths).toContain('gaps.json');
@@ -1786,19 +1786,19 @@ test('zips into an archive that unzips back to the same files', async () => {
   const files = await buildBundleFiles(input);
   const zipped = await zipBundle(files);
   const unzipped = unzipSync(zipped);
-  expect(strFromU8(unzipped['raider.json']!)).toBe(strFromU8(files['raider.json']!));
+  expect(strFromU8(unzipped['raidr.json']!)).toBe(strFromU8(files['raidr.json']!));
 });
 
 test('filename encodes host and start time', () => {
   expect(bundleFilename('https://app.example.com', '2026-08-24T10:05:00.000Z')).toBe(
-    'raider-app.example.com-20260824-1005.zip'
+    'raidr-app.example.com-20260824-1005.zip'
   );
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_extension && bun test tests/offscreen/exporter.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/offscreen/exporter.test.ts`
 Expected: FAIL — cannot resolve `../../src/offscreen/exporter`
 
 - [ ] **Step 3: Write src/offscreen/exporter.ts**
@@ -1813,8 +1813,8 @@ import {
   type CapturedRequest,
   type Gap,
   type RedactionEntry,
-  type RaiderManifest,
-} from '@sudobility/raider_lib';
+  type RaidrManifest,
+} from '@sudobility/raidr_lib';
 import type { ContentStore } from './store';
 
 export interface RuntimeArtifacts {
@@ -1827,7 +1827,7 @@ export interface RuntimeArtifacts {
 
 export interface BundleInput {
   store: ContentStore;
-  manifest: RaiderManifest;
+  manifest: RaidrManifest;
   requests: CapturedRequest[];
   frames: CapturedFrame[];
   gaps: Gap[];
@@ -1845,7 +1845,7 @@ export async function buildBundleFiles(
   input: BundleInput
 ): Promise<Record<string, Uint8Array>> {
   const files: Record<string, Uint8Array> = {
-    'raider.json': json(input.manifest),
+    'raidr.json': json(input.manifest),
     'network/requests.jsonl': encoder.encode(toJsonl(input.requests)),
     'network/websockets.jsonl': encoder.encode(toJsonl(input.frames)),
     'gaps.json': json(input.gaps),
@@ -1896,13 +1896,13 @@ export function bundleFilename(origin: string, startedAt: string): string {
   const host = new URL(origin).host;
   const date = startedAt.slice(0, 10).replace(/-/g, '');
   const time = startedAt.slice(11, 16).replace(':', '');
-  return `raider-${host}-${date}-${time}.zip`;
+  return `raidr-${host}-${date}-${time}.zip`;
 }
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd ~/projects/raider_extension && bun test tests/offscreen/exporter.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/offscreen/exporter.test.ts`
 Expected: PASS, 6 tests
 
 - [ ] **Step 5: Wire export through the offscreen document and service worker**
@@ -1911,12 +1911,12 @@ This is the minimal version that proves export end-to-end; Task 17 replaces it
 with the full session lifecycle. Replace `src/offscreen/index.ts`:
 
 ```ts
-import { isRaiderMessage } from '@/shared/messages';
+import { isRaidrMessage } from '@/shared/messages';
 import { IdbContentStore } from './store';
 import { buildBundleFiles, zipBundle, bundleFilename } from './exporter';
 import type { BundleInput } from './exporter';
 
-const store = new IdbContentStore('raider-capture', indexedDB);
+const store = new IdbContentStore('raidr-capture', indexedDB);
 
 // Session state lives here, not in the service worker: MV3 terminates an idle
 // worker after ~30s, which would discard the buffer mid-capture.
@@ -1936,7 +1936,7 @@ const session = {
 };
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!isRaiderMessage(message)) return;
+  if (!isRaidrMessage(message)) return;
 
   if (message.kind === 'export/start') {
     void (async () => {
@@ -1968,7 +1968,7 @@ export { session, store };
 Add offscreen lifecycle and download handling to `src/background/index.ts`:
 
 ```ts
-import { isRaiderMessage } from '@/shared/messages';
+import { isRaidrMessage } from '@/shared/messages';
 
 const OFFSCREEN_PATH = 'src/offscreen/index.html';
 
@@ -1986,7 +1986,7 @@ async function ensureOffscreen(): Promise<void> {
 }
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (!isRaiderMessage(message)) return;
+  if (!isRaidrMessage(message)) return;
 
   if (message.kind === 'export/ready') {
     void chrome.downloads.download({
@@ -1999,20 +1999,20 @@ chrome.runtime.onMessage.addListener((message) => {
 
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
-  .catch((error: unknown) => console.error('[raider] side panel', error));
+  .catch((error: unknown) => console.error('[raidr] side panel', error));
 
 void ensureOffscreen();
 ```
 
 - [ ] **Step 6: Verify the full suite and build**
 
-Run: `cd ~/projects/raider_extension && bun test && bun run typecheck && bun run build`
+Run: `cd ~/projects/raidr_extension && bun test && bun run typecheck && bun run build`
 Expected: PASS, 28 tests total; typecheck clean; build succeeds
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd ~/projects/raider_extension
+cd ~/projects/raidr_extension
 git add -A
 git commit -m "feat: bundle assembly, zip export, and offscreen document lifecycle"
 ```
@@ -2020,15 +2020,15 @@ git commit -m "feat: bundle assembly, zip export, and offscreen document lifecyc
 ---
 # Milestone 3 — Redaction
 
-All redaction logic lives in `raider_lib` as pure functions. The extension imports
+All redaction logic lives in `raidr_lib` as pure functions. The extension imports
 it and calls it before anything reaches IndexedDB.
 
 ### Task 9: Stable pseudonym generator
 
 **Files:**
-- Create: `~/projects/raider_lib/src/redaction/pseudonym.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/redaction/pseudonym.test.ts`
+- Create: `~/projects/raidr_lib/src/redaction/pseudonym.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/redaction/pseudonym.test.ts`
 
 **Interfaces:**
 - Consumes: `RedactionKind`, `RedactionEntry` from Task 2
@@ -2103,7 +2103,7 @@ test('entries never contain the original values', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/redaction/pseudonym.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/redaction/pseudonym.test.ts`
 Expected: FAIL — cannot resolve `../../src/redaction/pseudonym`
 
 - [ ] **Step 3: Write src/redaction/pseudonym.ts**
@@ -2195,13 +2195,13 @@ export type { Pseudonymizer } from './redaction/pseudonym';
 
 - [ ] **Step 5: Run tests**
 
-Run: `cd ~/projects/raider_lib && bun test && bun run typecheck`
+Run: `cd ~/projects/raidr_lib && bun test && bun run typecheck`
 Expected: PASS, 21 tests total; typecheck clean
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd ~/projects/raider_lib
+cd ~/projects/raidr_lib
 git add -A
 git commit -m "feat: stable pseudonym generator preserving referential integrity"
 ```
@@ -2211,10 +2211,10 @@ git commit -m "feat: stable pseudonym generator preserving referential integrity
 ### Task 10: Detection patterns and header redaction
 
 **Files:**
-- Create: `~/projects/raider_lib/src/redaction/patterns.ts`
-- Create: `~/projects/raider_lib/src/redaction/headers.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/redaction/headers.test.ts`
+- Create: `~/projects/raidr_lib/src/redaction/patterns.ts`
+- Create: `~/projects/raidr_lib/src/redaction/headers.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/redaction/headers.test.ts`
 
 **Interfaces:**
 - Consumes: `Pseudonymizer` from Task 9
@@ -2295,7 +2295,7 @@ test('matches header names case-insensitively', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/redaction/headers.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/redaction/headers.test.ts`
 Expected: FAIL — cannot resolve `../../src/redaction/patterns`
 
 - [ ] **Step 3: Write src/redaction/patterns.ts**
@@ -2378,13 +2378,13 @@ export { redactHeaders } from './redaction/headers';
 
 - [ ] **Step 6: Run tests**
 
-Run: `cd ~/projects/raider_lib && bun test && bun run typecheck`
+Run: `cd ~/projects/raidr_lib && bun test && bun run typecheck`
 Expected: PASS, 29 tests total; typecheck clean
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd ~/projects/raider_lib
+cd ~/projects/raidr_lib
 git add -A
 git commit -m "feat: sensitive value detection and header redaction"
 ```
@@ -2394,11 +2394,11 @@ git commit -m "feat: sensitive value detection and header redaction"
 ### Task 11: JSON body redaction and the redaction entry point
 
 **Files:**
-- Create: `~/projects/raider_lib/src/redaction/json.ts`
-- Create: `~/projects/raider_lib/src/redaction/index.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/redaction/json.test.ts`
-- Test: `~/projects/raider_lib/tests/redaction/redactRequest.test.ts`
+- Create: `~/projects/raidr_lib/src/redaction/json.ts`
+- Create: `~/projects/raidr_lib/src/redaction/index.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/redaction/json.test.ts`
+- Test: `~/projects/raidr_lib/tests/redaction/redactRequest.test.ts`
 
 **Interfaces:**
 - Consumes: `Pseudonymizer`, `isSensitiveKey`, `classifyValue`
@@ -2626,7 +2626,7 @@ The last test is the point of the whole redaction design: it proves the auth flo
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd ~/projects/raider_lib && bun test tests/redaction/`
+Run: `cd ~/projects/raidr_lib && bun test tests/redaction/`
 Expected: FAIL — cannot resolve `../../src/redaction/json`
 
 - [ ] **Step 3: Write src/redaction/json.ts**
@@ -2829,13 +2829,13 @@ export type { RedactableRequest, RedactedRequest } from './redaction/index';
 
 - [ ] **Step 6: Run tests**
 
-Run: `cd ~/projects/raider_lib && bun test && bun run typecheck`
+Run: `cd ~/projects/raidr_lib && bun test && bun run typecheck`
 Expected: PASS, 45 tests total; typecheck clean
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd ~/projects/raider_lib
+cd ~/projects/raidr_lib
 git add -A
 git commit -m "feat: JSON, HTML hydration, and whole-request redaction"
 ```
@@ -2845,11 +2845,11 @@ git commit -m "feat: JSON, HTML hydration, and whole-request redaction"
 ### Task 12: Wire redaction into capture and add the review gate
 
 **Files:**
-- Create: `~/projects/raider_extension/src/offscreen/capturePipeline.ts`
-- Create: `~/projects/raider_extension/src/sidepanel/components/RedactionReport.tsx`
-- Modify: `~/projects/raider_extension/src/offscreen/index.ts`
-- Modify: `~/projects/raider_extension/src/sidepanel/SidePanel.tsx`
-- Test: `~/projects/raider_extension/tests/offscreen/capturePipeline.test.ts`
+- Create: `~/projects/raidr_extension/src/offscreen/capturePipeline.ts`
+- Create: `~/projects/raidr_extension/src/sidepanel/components/RedactionReport.tsx`
+- Modify: `~/projects/raidr_extension/src/offscreen/index.ts`
+- Modify: `~/projects/raidr_extension/src/sidepanel/SidePanel.tsx`
+- Test: `~/projects/raidr_extension/tests/offscreen/capturePipeline.test.ts`
 
 **Interfaces:**
 - Consumes: `AssembledRequest` (Task 6), `ContentStore` (Task 7), `redactRequest`/`createPseudonymizer` (Tasks 9–11)
@@ -2872,7 +2872,7 @@ import type { AssembledRequest } from '../../src/background/requestAssembler';
 
 function pipeline() {
   return new CapturePipeline(
-    new IdbContentStore(`raider-pipe-${Math.random()}`, indexedDB),
+    new IdbContentStore(`raidr-pipe-${Math.random()}`, indexedDB),
     'test-salt'
   );
 }
@@ -2960,7 +2960,7 @@ test('JavaScript bodies reach the store byte-identical', async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_extension && bun test tests/offscreen/capturePipeline.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/offscreen/capturePipeline.test.ts`
 Expected: FAIL — cannot resolve `../../src/offscreen/capturePipeline`
 
 - [ ] **Step 3: Write src/offscreen/capturePipeline.ts**
@@ -2971,7 +2971,7 @@ import {
   redactRequest,
   type CapturedRequest,
   type RedactionEntry,
-} from '@sudobility/raider_lib';
+} from '@sudobility/raidr_lib';
 import type { AssembledRequest } from '@/background/requestAssembler';
 import type { ContentStore } from './store';
 
@@ -3044,7 +3044,7 @@ export class CapturePipeline {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd ~/projects/raider_extension && bun test tests/offscreen/capturePipeline.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/offscreen/capturePipeline.test.ts`
 Expected: PASS, 7 tests
 
 - [ ] **Step 5: Build the redaction review gate**
@@ -3052,7 +3052,7 @@ Expected: PASS, 7 tests
 `src/sidepanel/components/RedactionReport.tsx`:
 
 ```tsx
-import type { RedactionEntry } from '@sudobility/raider_lib';
+import type { RedactionEntry } from '@sudobility/raidr_lib';
 
 interface Props {
   entries: RedactionEntry[];
@@ -3111,7 +3111,7 @@ export function RedactionReport({ entries, acknowledged, onAcknowledge }: Props)
 
 ```tsx
 import { useState } from 'react';
-import type { RedactionEntry } from '@sudobility/raider_lib';
+import type { RedactionEntry } from '@sudobility/raidr_lib';
 import { RedactionReport } from './components/RedactionReport';
 
 export function SidePanel() {
@@ -3120,7 +3120,7 @@ export function SidePanel() {
 
   return (
     <main className="p-4 text-sm">
-      <h1 className="font-semibold">raider</h1>
+      <h1 className="font-semibold">raidr</h1>
 
       <RedactionReport
         entries={entries}
@@ -3143,13 +3143,13 @@ export function SidePanel() {
 
 - [ ] **Step 7: Verify the suite and build**
 
-Run: `cd ~/projects/raider_extension && bun test && bun run typecheck && bun run build`
+Run: `cd ~/projects/raidr_extension && bun test && bun run typecheck && bun run build`
 Expected: PASS, 35 tests total; typecheck clean; build succeeds
 
 - [ ] **Step 8: Commit**
 
 ```bash
-cd ~/projects/raider_extension
+cd ~/projects/raidr_extension
 git add -A
 git commit -m "feat: redaction pipeline and pre-export review gate"
 ```
@@ -3160,9 +3160,9 @@ git commit -m "feat: redaction pipeline and pre-export review gate"
 ### Task 13: Endpoint path templates
 
 **Files:**
-- Create: `~/projects/raider_lib/src/coverage/pathTemplate.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/coverage/pathTemplate.test.ts`
+- Create: `~/projects/raidr_lib/src/coverage/pathTemplate.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/coverage/pathTemplate.test.ts`
 
 **Interfaces:**
 - Consumes: nothing
@@ -3226,7 +3226,7 @@ test('endpointKey tolerates a malformed URL by returning it verbatim', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/coverage/pathTemplate.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/coverage/pathTemplate.test.ts`
 Expected: FAIL — cannot resolve `../../src/coverage/pathTemplate`
 
 - [ ] **Step 3: Write src/coverage/pathTemplate.ts**
@@ -3268,13 +3268,13 @@ export { toPathTemplate, endpointKey } from './coverage/pathTemplate';
 
 - [ ] **Step 5: Run tests**
 
-Run: `cd ~/projects/raider_lib && bun test && bun run typecheck`
+Run: `cd ~/projects/raidr_lib && bun test && bun run typecheck`
 Expected: PASS, 9 new tests; typecheck clean
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd ~/projects/raider_lib
+cd ~/projects/raidr_lib
 git add -A
 git commit -m "feat: endpoint path templating"
 ```
@@ -3284,9 +3284,9 @@ git commit -m "feat: endpoint path templating"
 ### Task 14: Coverage computation
 
 **Files:**
-- Create: `~/projects/raider_lib/src/coverage/coverage.ts`
-- Modify: `~/projects/raider_lib/src/index.ts`
-- Test: `~/projects/raider_lib/tests/coverage/coverage.test.ts`
+- Create: `~/projects/raidr_lib/src/coverage/coverage.ts`
+- Modify: `~/projects/raidr_lib/src/index.ts`
+- Test: `~/projects/raidr_lib/tests/coverage/coverage.test.ts`
 
 **Interfaces:**
 - Consumes: `endpointKey` from Task 13
@@ -3410,7 +3410,7 @@ test('complete is true only when chunks and routes are both fully covered', () =
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_lib && bun test tests/coverage/coverage.test.ts`
+Run: `cd ~/projects/raidr_lib && bun test tests/coverage/coverage.test.ts`
 Expected: FAIL — cannot resolve `../../src/coverage/coverage`
 
 - [ ] **Step 3: Write src/coverage/coverage.ts**
@@ -3514,13 +3514,13 @@ export type {
 
 - [ ] **Step 5: Run tests and build the library**
 
-Run: `cd ~/projects/raider_lib && bun test && bun run typecheck && bun run build`
+Run: `cd ~/projects/raidr_lib && bun test && bun run typecheck && bun run build`
 Expected: PASS, 8 new tests; typecheck clean; `dist/` emitted
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd ~/projects/raider_lib
+cd ~/projects/raidr_lib
 git add -A
 git commit -m "feat: chunk, route, and endpoint coverage computation"
 ```
@@ -3530,11 +3530,11 @@ git commit -m "feat: chunk, route, and endpoint coverage computation"
 ### Task 15: Page introspection probes
 
 **Files:**
-- Create: `~/projects/raider_extension/src/introspect/probes.ts`
-- Test: `~/projects/raider_extension/tests/introspect/probes.test.ts`
+- Create: `~/projects/raidr_extension/src/introspect/probes.ts`
+- Test: `~/projects/raidr_extension/tests/introspect/probes.test.ts`
 
 **Interfaces:**
-- Consumes: `StackFingerprint` from `@sudobility/raider_lib` (type-only)
+- Consumes: `StackFingerprint` from `@sudobility/raidr_lib` (type-only)
 - Produces:
   - `detectFramework(): StackFingerprint`
   - `readRoutes(): string[]`
@@ -3666,13 +3666,13 @@ test('returns an empty route list when no router is reachable', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_extension && bun test tests/introspect/probes.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/introspect/probes.test.ts`
 Expected: FAIL — cannot resolve `../../src/introspect/probes`
 
 - [ ] **Step 3: Write src/introspect/probes.ts**
 
 ```ts
-import type { StackFingerprint } from '@sudobility/raider_lib';
+import type { StackFingerprint } from '@sudobility/raidr_lib';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -3797,13 +3797,13 @@ export const PROBE_SOURCES = {
 
 - [ ] **Step 4: Run tests**
 
-Run: `cd ~/projects/raider_extension && bun test tests/introspect/probes.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/introspect/probes.test.ts`
 Expected: PASS, 11 tests
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/projects/raider_extension
+cd ~/projects/raidr_extension
 git add -A
 git commit -m "feat: self-contained page introspection probes"
 ```
@@ -3813,12 +3813,12 @@ git commit -m "feat: self-contained page introspection probes"
 ### Task 16: Session wiring and the coverage meter
 
 **Files:**
-- Create: `~/projects/raider_extension/src/background/cdpSession.ts`
-- Create: `~/projects/raider_extension/src/sidepanel/components/CoverageMeter.tsx`
-- Modify: `~/projects/raider_extension/src/background/index.ts`
-- Modify: `~/projects/raider_extension/src/sidepanel/SidePanel.tsx`
-- Modify: `~/projects/raider_extension/src/shared/messages.ts`
-- Test: `~/projects/raider_extension/tests/background/cdpSession.test.ts`
+- Create: `~/projects/raidr_extension/src/background/cdpSession.ts`
+- Create: `~/projects/raidr_extension/src/sidepanel/components/CoverageMeter.tsx`
+- Modify: `~/projects/raidr_extension/src/background/index.ts`
+- Modify: `~/projects/raidr_extension/src/sidepanel/SidePanel.tsx`
+- Modify: `~/projects/raidr_extension/src/shared/messages.ts`
+- Test: `~/projects/raidr_extension/tests/background/cdpSession.test.ts`
 
 **Interfaces:**
 - Consumes: `ChromeAdapter` (Task 5), `RequestAssembler` (Task 6), `PROBE_SOURCES` (Task 15), `computeCoverage` (Task 14)
@@ -3836,7 +3836,7 @@ git commit -m "feat: self-contained page introspection probes"
 import { expect, test } from 'bun:test';
 import { FakeChromeAdapter } from '../support/FakeChromeAdapter';
 import { CdpSession, type CaptureSink } from '../../src/background/cdpSession';
-import type { Gap } from '@sudobility/raider_lib';
+import type { Gap } from '@sudobility/raidr_lib';
 
 function collectingSink() {
   const requests: Array<{ url: string; body: string | null }> = [];
@@ -4015,13 +4015,13 @@ test('detaching stops the debugger cleanly', async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_extension && bun test tests/background/cdpSession.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/background/cdpSession.test.ts`
 Expected: FAIL — cannot resolve `../../src/background/cdpSession`
 
 - [ ] **Step 3: Write src/background/cdpSession.ts**
 
 ```ts
-import type { Gap, StackFingerprint } from '@sudobility/raider_lib';
+import type { Gap, StackFingerprint } from '@sudobility/raidr_lib';
 import type { ChromeAdapter } from '@/adapters/ChromeAdapter';
 import { RequestAssembler, type AssembledRequest } from './requestAssembler';
 import { PROBE_SOURCES } from '@/introspect/probes';
@@ -4184,7 +4184,7 @@ export class CdpSession {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd ~/projects/raider_extension && bun test tests/background/cdpSession.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/background/cdpSession.test.ts`
 Expected: PASS, 8 tests
 
 - [ ] **Step 5: Build the coverage meter component**
@@ -4192,7 +4192,7 @@ Expected: PASS, 8 tests
 `src/sidepanel/components/CoverageMeter.tsx`:
 
 ```tsx
-import type { CoverageReport } from '@sudobility/raider_lib';
+import type { CoverageReport } from '@sudobility/raidr_lib';
 
 interface Props {
   report: CoverageReport;
@@ -4283,10 +4283,10 @@ export function CoverageMeter({ report }: Props) {
 
 - [ ] **Step 6: Add the coverage message and wire the panel**
 
-Add to the `RaiderMessage` union and `KINDS` set in `src/shared/messages.ts`:
+Add to the `RaidrMessage` union and `KINDS` set in `src/shared/messages.ts`:
 
 ```ts
-  | { kind: 'session/coverage'; report: import('@sudobility/raider_lib').CoverageReport }
+  | { kind: 'session/coverage'; report: import('@sudobility/raidr_lib').CoverageReport }
 ```
 
 and add `'session/coverage'` to the `KINDS` set.
@@ -4295,8 +4295,8 @@ Replace `src/sidepanel/SidePanel.tsx`:
 
 ```tsx
 import { useEffect, useState } from 'react';
-import type { CoverageReport, RedactionEntry } from '@sudobility/raider_lib';
-import { isRaiderMessage } from '@/shared/messages';
+import type { CoverageReport, RedactionEntry } from '@sudobility/raidr_lib';
+import { isRaidrMessage } from '@/shared/messages';
 import { CoverageMeter } from './components/CoverageMeter';
 import { RedactionReport } from './components/RedactionReport';
 
@@ -4315,7 +4315,7 @@ export function SidePanel() {
 
   useEffect(() => {
     const listener = (message: unknown) => {
-      if (!isRaiderMessage(message)) return;
+      if (!isRaidrMessage(message)) return;
       if (message.kind === 'session/coverage') setReport(message.report);
     };
     chrome.runtime.onMessage.addListener(listener);
@@ -4337,7 +4337,7 @@ export function SidePanel() {
   return (
     <main className="p-4 text-sm">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="font-semibold">raider</h1>
+        <h1 className="font-semibold">raidr</h1>
         <button
           type="button"
           onClick={() => void toggle()}
@@ -4413,41 +4413,41 @@ and extend the message listener:
   if (message.kind === 'session/stop') void session?.stop();
 ```
 
-Add `'capture/runtime'` to the `RaiderMessage` union and `KINDS` set.
+Add `'capture/runtime'` to the `RaidrMessage` union and `KINDS` set.
 
 - [ ] **Step 8: Verify the whole suite and build**
 
 Run:
 ```bash
-cd ~/projects/raider_lib && bun test && bun run build
-cd ~/projects/raider_extension && bun test && bun run typecheck && bun run build
+cd ~/projects/raidr_lib && bun test && bun run build
+cd ~/projects/raidr_extension && bun test && bun run typecheck && bun run build
 ```
 Expected: all tests PASS; typecheck clean; build succeeds
 
 - [ ] **Step 9: End-to-end manual verification**
 
 1. Reload the unpacked extension at `chrome://extensions`.
-2. Open any React or Vue app in a tab and open the raider side panel.
+2. Open any React or Vue app in a tab and open the raidr side panel.
 3. Click **Start capture**. Confirm Chrome shows the "being debugged" banner.
 4. Navigate through several routes in the app.
 5. Confirm the coverage meter advances — chunk and route counts rise, endpoints appear.
 6. Tick the redaction acknowledgement and click **Export bundle**.
 7. Unzip the download and verify:
-   - `raider.json` has `formatVersion: 1` and a non-null `stack.framework`
+   - `raidr.json` has `formatVersion: 1` and a non-null `stack.framework`
    - `network/requests.jsonl` has one line per request
    - `content/` holds the JS bundles, byte-identical to what the site served
    - `redaction.json` lists placeholders and contains no real tokens
    - `gaps.json` exists (possibly empty)
 
 ```bash
-cd ~/Downloads && unzip -o raider-*.zip -d raider-check && jq . raider-check/raider.json
-grep -c '' raider-check/network/requests.jsonl
+cd ~/Downloads && unzip -o raidr-*.zip -d raidr-check && jq . raidr-check/raidr.json
+grep -c '' raidr-check/network/requests.jsonl
 ```
 
 - [ ] **Step 10: Commit**
 
 ```bash
-cd ~/projects/raider_extension
+cd ~/projects/raidr_extension
 git add -A
 git commit -m "feat: CDP session wiring and live coverage meter"
 ```
@@ -4463,10 +4463,10 @@ panel. Without it the panel's meter never moves and `session.manifest` stays
 null, so export refuses.
 
 **Files:**
-- Create: `~/projects/raider_extension/src/offscreen/sessionState.ts`
-- Modify: `~/projects/raider_extension/src/offscreen/index.ts`
-- Modify: `~/projects/raider_extension/src/shared/messages.ts`
-- Test: `~/projects/raider_extension/tests/offscreen/sessionState.test.ts`
+- Create: `~/projects/raidr_extension/src/offscreen/sessionState.ts`
+- Modify: `~/projects/raidr_extension/src/offscreen/index.ts`
+- Modify: `~/projects/raidr_extension/src/shared/messages.ts`
+- Test: `~/projects/raidr_extension/tests/offscreen/sessionState.test.ts`
 
 **Interfaces:**
 - Consumes: `CapturePipeline` (Task 12), `computeCoverage` (Task 14), `createManifest` (Task 3), `RuntimeSnapshot` (Task 16)
@@ -4479,7 +4479,7 @@ null, so export refuses.
     - `ingestRuntime(snapshot: RuntimeSnapshot): void`
     - `coverage(): CoverageReport`
     - `redaction(): RedactionEntry[]`
-    - `manifest(): RaiderManifest | null`
+    - `manifest(): RaidrManifest | null`
     - `bundleInput(): BundleInput`
 
 - [ ] **Step 1: Write the failing test**
@@ -4494,7 +4494,7 @@ import type { AssembledRequest } from '../../src/background/requestAssembler';
 
 function session() {
   const state = new SessionState(
-    new IdbContentStore(`raider-session-${Math.random()}`, indexedDB),
+    new IdbContentStore(`raidr-session-${Math.random()}`, indexedDB),
     'salt'
   );
   state.begin('https://example.com', '2026-08-24T10:00:00.000Z', 's1');
@@ -4526,7 +4526,7 @@ test('begin creates a manifest', () => {
 
 test('manifest is null before begin', () => {
   const state = new SessionState(
-    new IdbContentStore(`raider-none-${Math.random()}`, indexedDB),
+    new IdbContentStore(`raidr-none-${Math.random()}`, indexedDB),
     'salt'
   );
   expect(state.manifest()).toBeNull();
@@ -4626,7 +4626,7 @@ test('redaction entries surface through the session', async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_extension && bun test tests/offscreen/sessionState.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/offscreen/sessionState.test.ts`
 Expected: FAIL — cannot resolve `../../src/offscreen/sessionState`
 
 - [ ] **Step 3: Write src/offscreen/sessionState.ts**
@@ -4641,8 +4641,8 @@ import {
   type Gap,
   type RedactionEntry,
   type StackFingerprint,
-  type RaiderManifest,
-} from '@sudobility/raider_lib';
+  type RaidrManifest,
+} from '@sudobility/raidr_lib';
 import type { AssembledRequest } from '@/background/requestAssembler';
 import type { RuntimeSnapshot } from '@/background/cdpSession';
 import { CapturePipeline } from './capturePipeline';
@@ -4651,7 +4651,7 @@ import type { BundleInput } from './exporter';
 
 export class SessionState {
   private pipeline: CapturePipeline;
-  private currentManifest: RaiderManifest | null = null;
+  private currentManifest: RaidrManifest | null = null;
   private gaps: Gap[] = [];
   private frames: CapturedFrame[] = [];
   private knownChunks = new Set<string>();
@@ -4746,7 +4746,7 @@ export class SessionState {
     return this.pipeline.redactionEntries();
   }
 
-  manifest(): RaiderManifest | null {
+  manifest(): RaidrManifest | null {
     return this.currentManifest;
   }
 
@@ -4780,7 +4780,7 @@ export class SessionState {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd ~/projects/raider_extension && bun test tests/offscreen/sessionState.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/offscreen/sessionState.test.ts`
 Expected: PASS, 9 tests
 
 - [ ] **Step 5: Add the remaining message kinds**
@@ -4788,7 +4788,7 @@ Expected: PASS, 9 tests
 In `src/shared/messages.ts`, add to the union and to `KINDS`:
 
 ```ts
-  | { kind: 'session/redaction'; entries: import('@sudobility/raider_lib').RedactionEntry[] }
+  | { kind: 'session/redaction'; entries: import('@sudobility/raidr_lib').RedactionEntry[] }
   | { kind: 'capture/runtime'; snapshot: import('@/background/cdpSession').RuntimeSnapshot }
 ```
 
@@ -4797,12 +4797,12 @@ Add `'session/redaction'` and `'capture/runtime'` to the `KINDS` set.
 - [ ] **Step 6: Replace src/offscreen/index.ts with the wired version**
 
 ```ts
-import { isRaiderMessage } from '@/shared/messages';
+import { isRaidrMessage } from '@/shared/messages';
 import { IdbContentStore } from './store';
 import { SessionState } from './sessionState';
 import { buildBundleFiles, zipBundle, bundleFilename } from './exporter';
 
-const store = new IdbContentStore('raider-capture', indexedDB);
+const store = new IdbContentStore('raidr-capture', indexedDB);
 
 // The salt is generated per session and deliberately never persisted or
 // exported: it is what keeps short pseudonym hashes from being brute-forced
@@ -4822,7 +4822,7 @@ function broadcast(): void {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!isRaiderMessage(message)) return;
+  if (!isRaidrMessage(message)) return;
 
   switch (message.kind) {
     case 'session/start':
@@ -4898,7 +4898,7 @@ manifest and export filename are correct. Replace the `session/start` branch:
   }
 ```
 
-Add `{ kind: 'session/begin'; origin: string }` to the `RaiderMessage` union and
+Add `{ kind: 'session/begin'; origin: string }` to the `RaidrMessage` union and
 `'session/begin'` to `KINDS`, and in the offscreen listener replace the
 `session/start` case with:
 
@@ -4919,13 +4919,13 @@ In `src/sidepanel/SidePanel.tsx`, extend the message listener added in Task 16:
 
 - [ ] **Step 9: Verify the suite and build**
 
-Run: `cd ~/projects/raider_extension && bun test && bun run typecheck && bun run build`
+Run: `cd ~/projects/raidr_extension && bun test && bun run typecheck && bun run build`
 Expected: all tests PASS; typecheck clean; build succeeds
 
 - [ ] **Step 10: Commit**
 
 ```bash
-cd ~/projects/raider_extension
+cd ~/projects/raidr_extension
 git add -A
 git commit -m "feat: offscreen session lifecycle wiring coverage and redaction to the panel"
 ```
@@ -4941,9 +4941,9 @@ visible to CDP's `Debugger.scriptParsed`, and because the map has to be fetched
 from the live origin with the session's own credentials.
 
 **Files:**
-- Create: `~/projects/raider_extension/src/background/sourceMaps.ts`
-- Modify: `~/projects/raider_extension/src/background/cdpSession.ts`
-- Test: `~/projects/raider_extension/tests/background/sourceMaps.test.ts`
+- Create: `~/projects/raidr_extension/src/background/sourceMaps.ts`
+- Modify: `~/projects/raidr_extension/src/background/cdpSession.ts`
+- Test: `~/projects/raidr_extension/tests/background/sourceMaps.test.ts`
 
 **Interfaces:**
 - Consumes: nothing
@@ -5035,7 +5035,7 @@ reconstruction.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd ~/projects/raider_extension && bun test tests/background/sourceMaps.test.ts`
+Run: `cd ~/projects/raidr_extension && bun test tests/background/sourceMaps.test.ts`
 Expected: FAIL — cannot resolve `../../src/background/sourceMaps`
 
 - [ ] **Step 3: Write src/background/sourceMaps.ts**
@@ -5157,7 +5157,7 @@ In `src/offscreen/exporter.ts`, add `sourceMaps: Record<string, string>` to
   files['sourcemaps/index.json'] = json(input.sourceMaps);
 ```
 
-Import `sourcemapPath` from `@sudobility/raider_lib`, and return
+Import `sourcemapPath` from `@sudobility/raidr_lib`, and return
 `sourceMaps: this.sourceMapHashes()` from `SessionState.bundleInput()`.
 
 Add a `capture/sourcemap` message kind carrying `{ scriptUrl, text }`, routed
@@ -5166,7 +5166,7 @@ following the same pattern as `capture/gap`.
 
 - [ ] **Step 6: Verify the suite and build**
 
-Run: `cd ~/projects/raider_extension && bun test && bun run typecheck && bun run build`
+Run: `cd ~/projects/raidr_extension && bun test && bun run typecheck && bun run build`
 Expected: all tests PASS, 10 new tests; typecheck clean; build succeeds
 
 - [ ] **Step 7: Verify against a real app with published maps**
@@ -5175,9 +5175,9 @@ Capture any Vite dev build or a production app that ships maps, export the
 bundle, then check:
 
 ```bash
-cd ~/Downloads && unzip -o raider-*.zip -d raider-check
-jq 'keys | length' raider-check/sourcemaps/index.json
-jq '.sourcesContent | length' raider-check/sourcemaps/*.map | head -3
+cd ~/Downloads && unzip -o raidr-*.zip -d raidr-check
+jq 'keys | length' raidr-check/sourcemaps/index.json
+jq '.sourcesContent | length' raidr-check/sourcemaps/*.map | head -3
 ```
 
 Expected: a non-zero map count, and `sourcesContent` arrays holding real source.
@@ -5185,7 +5185,7 @@ Expected: a non-zero map count, and `sourcesContent` arrays holding real source.
 - [ ] **Step 8: Commit**
 
 ```bash
-cd ~/projects/raider_extension
+cd ~/projects/raidr_extension
 git add -A
 git commit -m "feat: source-map discovery and bundle storage"
 ```
@@ -5207,6 +5207,6 @@ git commit -m "feat: source-map discovery and bundle storage"
 - Bundle module splitting and beautification
 - JSON Schema inference and the API model
 - Deterministic codegen and the Hono replay server
-- The `raider_cli` binary and the `reconstruct` skill it drives (a separate repo — see the spec's Repositories section for why the CLI cannot live in `raider_lib`)
+- The `raidr_cli` binary and the `reconstruct` skill it drives (a separate repo — see the spec's Repositories section for why the CLI cannot live in `raidr_lib`)
 - Round-trip end-to-end test
 - WebSocket frame capture is typed in the bundle format and written to `network/websockets.jsonl`, but the CDP handlers for `Network.webSocketFrameSent`/`webSocketFrameReceived` are not wired in these four milestones.

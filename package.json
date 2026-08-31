@@ -1,19 +1,19 @@
 {
-  "name": "@sudobility/raider_lib",
-  "version": "0.0.2",
-  "description": "Bundle format, redaction, and analysis for raider web app capture",
+  "name": "@sudobility/raidr_lib",
+  "version": "0.0.3",
+  "description": "Bundle format, redaction, and analysis for raidr web app capture",
   "license": "BUSL-1.1",
   "author": "Sudobility Inc.",
-  "homepage": "https://github.com/johnqh/raider_lib#readme",
+  "homepage": "https://github.com/johnqh/raidr_lib#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/johnqh/raider_lib.git"
+    "url": "git+https://github.com/johnqh/raidr_lib.git"
   },
   "bugs": {
-    "url": "https://github.com/johnqh/raider_lib/issues"
+    "url": "https://github.com/johnqh/raidr_lib/issues"
   },
   "keywords": [
-    "raider",
+    "raidr",
     "capture",
     "reconstruction",
     "har",

@@ -47,7 +47,7 @@ test('parseJsonl ignores blank trailing lines', () => {
 });
 
 test('reads the committed minimal fixture bundle', async () => {
-  const manifestText = await Bun.file('tests/fixtures/minimal/raider.json').text();
+  const manifestText = await Bun.file('tests/fixtures/minimal/raidr.json').text();
   const result = validateManifest(JSON.parse(manifestText));
   expect(result.ok).toBe(true);
 
